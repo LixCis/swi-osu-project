@@ -28,7 +28,6 @@ export function ManageRegistrationsPage() {
   const [error, setError] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [conflicts, setConflicts] = useState<BulkConflict[] | null>(null)
-  void conflicts
 
   useEffect(() => {
     loadEvents()
@@ -331,6 +330,28 @@ export function ManageRegistrationsPage() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {conflicts && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setConflicts(null)}>
+          <div className="bg-white rounded-lg max-w-md w-full p-5" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-red-600 mb-2">Kapacita pozic překročena</h3>
+            <p className="text-sm text-slate-600 mb-3">
+              Tyto registrace nelze schválit, protože by překročily kapacitu pozice. Žádná registrace nebyla změněna.
+            </p>
+            <ul className="space-y-2 mb-4">
+              {conflicts.map((c) => (
+                <li key={c.registrationId} className="text-sm border border-slate-200 rounded p-2">
+                  <div className="font-semibold">{c.positionName}</div>
+                  <div className="text-xs text-slate-500">Aktuálně schváleno {c.currentApprovedCount} z {c.capacity}</div>
+                </li>
+              ))}
+            </ul>
+            <button onClick={() => setConflicts(null)} className="w-full py-2 bg-slate-800 text-white rounded font-semibold">
+              OK
+            </button>
+          </div>
         </div>
       )}
     </div>
