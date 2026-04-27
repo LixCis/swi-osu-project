@@ -1,18 +1,21 @@
 package cz.osu.brigadnik.service;
 
 import cz.osu.brigadnik.dto.BreakDto;
+import cz.osu.brigadnik.dto.LiveWorkerDto;
 import cz.osu.brigadnik.dto.TimeRecordAdminDto;
 import cz.osu.brigadnik.dto.TimeRecordDto;
 import cz.osu.brigadnik.entity.Break;
 import cz.osu.brigadnik.entity.Registration;
 import cz.osu.brigadnik.entity.TimeRecord;
 import cz.osu.brigadnik.entity.User;
+import cz.osu.brigadnik.enums.LiveWorkerStatus;
 import cz.osu.brigadnik.enums.RegistrationStatus;
 import cz.osu.brigadnik.exception.ResourceNotFoundException;
 import cz.osu.brigadnik.repository.BreakRepository;
 import cz.osu.brigadnik.repository.RegistrationRepository;
 import cz.osu.brigadnik.repository.TimeRecordRepository;
 import cz.osu.brigadnik.repository.UserRepository;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -28,15 +31,36 @@ public class TimeService {
     private final BreakRepository breakRepository;
     private final UserRepository userRepository;
     private final RegistrationRepository registrationRepository;
+    private final SimpMessagingTemplate messagingTemplate;
+    private final DashboardService dashboardService;
 
     public TimeService(TimeRecordRepository timeRecordRepository,
                        BreakRepository breakRepository,
                        UserRepository userRepository,
-                       RegistrationRepository registrationRepository) {
+                       RegistrationRepository registrationRepository,
+                       SimpMessagingTemplate messagingTemplate,
+                       DashboardService dashboardService) {
         this.timeRecordRepository = timeRecordRepository;
         this.breakRepository = breakRepository;
         this.userRepository = userRepository;
         this.registrationRepository = registrationRepository;
+        this.messagingTemplate = messagingTemplate;
+        this.dashboardService = dashboardService;
+    }
+
+    private void broadcastLive(Registration registration) {
+        Long eventId = registration.getPosition().getEvent().getId();
+        List<TimeRecord> records = timeRecordRepository.findByRegistrationId(registration.getId());
+        LiveWorkerStatus status = dashboardService.computeStatus(registration, records, breakRepository);
+        LiveWorkerDto dto = LiveWorkerDto.builder()
+                .workerId(registration.getWorker().getId())
+                .workerName(registration.getWorker().getFirstName() + " " + registration.getWorker().getLastName())
+                .positionName(registration.getPosition().getName())
+                .status(status)
+                .eventId(eventId)
+                .registrationId(registration.getId())
+                .build();
+        messagingTemplate.convertAndSend("/topic/event/" + eventId + "/live", dto);
     }
 
     public TimeRecordDto clockIn(Long workerId, Long registrationId) {
@@ -61,6 +85,7 @@ public class TimeService {
                 .build();
 
         timeRecord = timeRecordRepository.save(timeRecord);
+        broadcastLive(registration);
         return entityToDto(timeRecord);
     }
 
@@ -80,6 +105,7 @@ public class TimeService {
         timeRecord.setComputedHours(calculateHours(timeRecord));
 
         timeRecord = timeRecordRepository.save(timeRecord);
+        broadcastLive(timeRecord.getRegistration());
         return entityToDto(timeRecord);
     }
 
@@ -106,6 +132,7 @@ public class TimeService {
                 .build();
 
         breakRepository.save(breakRecord);
+        broadcastLive(timeRecord.getRegistration());
         return entityToDto(timeRecord);
     }
 
@@ -117,6 +144,7 @@ public class TimeService {
         breakRepository.save(breakRecord);
 
         TimeRecord timeRecord = breakRecord.getTimeRecord();
+        broadcastLive(timeRecord.getRegistration());
         return entityToDto(timeRecord);
     }
 
