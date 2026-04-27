@@ -6,6 +6,7 @@ import { Role } from './types'
 
 import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
+import { HomePage } from './pages/HomePage'
 import { EventsPage } from './pages/EventsPage'
 import { EventDetailPage } from './pages/EventDetailPage'
 import { MyRegistrationsPage } from './pages/MyRegistrationsPage'
@@ -35,12 +36,23 @@ function AppContent() {
         path="/"
         element={
           isAuthenticated ? (
-            <Layout>
-              <Navigate to="/events" replace />
-            </Layout>
+            <Navigate to="/home" replace />
           ) : (
             <Navigate to="/login" replace />
           )
+        }
+      />
+
+      <Route
+        path="/home"
+        element={
+          <ProtectedRoute>
+            <WorkerRoute>
+              <Layout>
+                <HomePage />
+              </Layout>
+            </WorkerRoute>
+          </ProtectedRoute>
         }
       />
 

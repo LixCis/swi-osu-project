@@ -22,6 +22,11 @@ export function Navbar() {
           {isAuthenticated ? (
             <>
               <div className="flex items-center gap-6">
+                {user?.role === Role.WORKER && (
+                  <Link to="/home" className="hover:text-blue-200">
+                    Home
+                  </Link>
+                )}
                 <Link to="/events" className="hover:text-blue-200">
                   Events
                 </Link>
