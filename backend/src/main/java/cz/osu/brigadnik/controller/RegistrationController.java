@@ -35,6 +35,13 @@ public class RegistrationController {
         return ResponseEntity.ok(registrations);
     }
 
+    @GetMapping("/api/registrations/my/upcoming")
+    public ResponseEntity<List<RegistrationDto>> getMyUpcomingRegistrations() {
+        Long workerId = extractUserIdFromContext();
+        List<RegistrationDto> registrations = registrationService.getUpcomingForWorker(workerId);
+        return ResponseEntity.ok(registrations);
+    }
+
     @GetMapping("/api/events/{eventId}/registrations")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<RegistrationDto>> getEventRegistrations(@PathVariable Long eventId) {

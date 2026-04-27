@@ -69,6 +69,20 @@ public class RegistrationService {
                 .collect(Collectors.toList());
     }
 
+    public List<RegistrationDto> getUpcomingForWorker(Long workerId) {
+        LocalDate today = LocalDate.now();
+        return registrationRepository.findByWorkerId(workerId).stream()
+                .filter(r -> r.getStatus() == RegistrationStatus.APPROVED)
+                .filter(r -> !r.getPosition().getDate().isBefore(today))
+                .sorted((a, b) -> {
+                    LocalDateTime aStart = LocalDateTime.of(a.getPosition().getDate(), a.getPosition().getStartTime());
+                    LocalDateTime bStart = LocalDateTime.of(b.getPosition().getDate(), b.getPosition().getStartTime());
+                    return aStart.compareTo(bStart);
+                })
+                .map(this::entityToDto)
+                .collect(Collectors.toList());
+    }
+
     public List<RegistrationDto> getRegistrationsByEventId(Long eventId, Long userId) {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found"));
