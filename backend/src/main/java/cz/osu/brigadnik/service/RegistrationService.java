@@ -1,11 +1,13 @@
 package cz.osu.brigadnik.service;
 
+import cz.osu.brigadnik.dto.BulkConflictResponse;
 import cz.osu.brigadnik.dto.RegistrationDto;
 import cz.osu.brigadnik.entity.Event;
 import cz.osu.brigadnik.entity.Position;
 import cz.osu.brigadnik.entity.Registration;
 import cz.osu.brigadnik.entity.User;
 import cz.osu.brigadnik.enums.RegistrationStatus;
+import cz.osu.brigadnik.exception.BulkCapacityConflictException;
 import cz.osu.brigadnik.exception.ResourceNotFoundException;
 import cz.osu.brigadnik.repository.EventRepository;
 import cz.osu.brigadnik.repository.BreakRepository;
@@ -18,7 +20,10 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -126,6 +131,81 @@ public class RegistrationService {
         }
         timeRecordRepository.deleteAll(timeRecords);
         registrationRepository.deleteById(registrationId);
+    }
+
+    public List<RegistrationDto> bulkApprove(List<Long> ids, Long adminId) {
+        List<Registration> registrations = registrationRepository.findAllById(ids);
+        if (registrations.size() != ids.size()) {
+            throw new ResourceNotFoundException("One or more registrations not found");
+        }
+        for (Registration r : registrations) {
+            verifyAdminOwnership(r, adminId);
+        }
+
+        Map<Long, Long> capacityIncrement = new HashMap<>();
+        List<BulkConflictResponse.Conflict> conflicts = new ArrayList<>();
+
+        for (Registration r : registrations) {
+            if (r.getStatus() == RegistrationStatus.APPROVED) continue;
+            Long posId = r.getPosition().getId();
+            long current = registrationRepository.findByPositionId(posId).stream()
+                    .filter(x -> x.getStatus() == RegistrationStatus.APPROVED)
+                    .count();
+            long planned = current + capacityIncrement.getOrDefault(posId, 0L) + 1;
+            if (planned > r.getPosition().getCapacity()) {
+                conflicts.add(BulkConflictResponse.Conflict.builder()
+                        .registrationId(r.getId())
+                        .positionName(r.getPosition().getName())
+                        .currentApprovedCount((int) current)
+                        .capacity(r.getPosition().getCapacity())
+                        .build());
+            } else {
+                capacityIncrement.merge(posId, 1L, Long::sum);
+            }
+        }
+
+        if (!conflicts.isEmpty()) {
+            throw new BulkCapacityConflictException(conflicts);
+        }
+
+        for (Registration r : registrations) {
+            if (r.getStatus() != RegistrationStatus.APPROVED) {
+                r.setStatus(RegistrationStatus.APPROVED);
+            }
+        }
+        return registrationRepository.saveAll(registrations).stream().map(this::entityToDto).collect(Collectors.toList());
+    }
+
+    public List<RegistrationDto> bulkReject(List<Long> ids, Long adminId) {
+        List<Registration> registrations = registrationRepository.findAllById(ids);
+        if (registrations.size() != ids.size()) {
+            throw new ResourceNotFoundException("One or more registrations not found");
+        }
+        for (Registration r : registrations) {
+            verifyAdminOwnership(r, adminId);
+            r.setStatus(RegistrationStatus.REJECTED);
+        }
+        return registrationRepository.saveAll(registrations).stream().map(this::entityToDto).collect(Collectors.toList());
+    }
+
+    public void bulkDelete(List<Long> ids, Long adminId) {
+        List<Registration> registrations = registrationRepository.findAllById(ids);
+        if (registrations.size() != ids.size()) {
+            throw new ResourceNotFoundException("One or more registrations not found");
+        }
+        for (Registration r : registrations) {
+            verifyAdminOwnership(r, adminId);
+        }
+        for (Long id : ids) {
+            deleteRegistration(id);
+        }
+    }
+
+    private void verifyAdminOwnership(Registration r, Long adminId) {
+        Long ownerId = r.getPosition().getEvent().getCreatedBy().getId();
+        if (!ownerId.equals(adminId)) {
+            throw new IllegalAccessError("Forbidden: not owner of event");
+        }
     }
 
     private void checkCapacity(Position position) {

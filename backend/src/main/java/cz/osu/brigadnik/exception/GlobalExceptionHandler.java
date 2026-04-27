@@ -1,5 +1,6 @@
 package cz.osu.brigadnik.exception;
 
+import cz.osu.brigadnik.dto.BulkConflictResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -50,6 +51,12 @@ public class GlobalExceptionHandler {
                 .errors(errors)
                 .build();
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(BulkCapacityConflictException.class)
+    public ResponseEntity<BulkConflictResponse> handleBulkCapacity(BulkCapacityConflictException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(BulkConflictResponse.builder().conflicts(ex.getConflicts()).build());
     }
 
     @ExceptionHandler(Exception.class)

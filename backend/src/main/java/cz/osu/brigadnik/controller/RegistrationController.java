@@ -1,5 +1,6 @@
 package cz.osu.brigadnik.controller;
 
+import cz.osu.brigadnik.dto.BulkActionRequest;
 import cz.osu.brigadnik.dto.RegistrationDto;
 import cz.osu.brigadnik.service.RegistrationService;
 import jakarta.validation.Valid;
@@ -68,6 +69,28 @@ public class RegistrationController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteRegistration(@PathVariable Long id) {
         registrationService.deleteRegistration(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/api/registrations/bulk-approve")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<RegistrationDto>> bulkApprove(@Valid @RequestBody BulkActionRequest req) {
+        Long adminId = extractUserIdFromContext();
+        return ResponseEntity.ok(registrationService.bulkApprove(req.getIds(), adminId));
+    }
+
+    @PostMapping("/api/registrations/bulk-reject")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<RegistrationDto>> bulkReject(@Valid @RequestBody BulkActionRequest req) {
+        Long adminId = extractUserIdFromContext();
+        return ResponseEntity.ok(registrationService.bulkReject(req.getIds(), adminId));
+    }
+
+    @PostMapping("/api/registrations/bulk-delete")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> bulkDelete(@Valid @RequestBody BulkActionRequest req) {
+        Long adminId = extractUserIdFromContext();
+        registrationService.bulkDelete(req.getIds(), adminId);
         return ResponseEntity.noContent().build();
     }
 
