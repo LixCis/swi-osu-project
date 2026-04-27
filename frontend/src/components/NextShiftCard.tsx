@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../api/axios'
-import type { Registration } from '../types'
-import { formatDate } from '../utils/formatting'
+import type { Registration, TimeRecord } from '../types'
+import { formatDate, parseUtc } from '../utils/formatting'
 
 interface Props {
   registration: Registration
@@ -23,14 +23,35 @@ function computeCountdown(positionDate?: string, positionStartTime?: string): st
   return `Začíná za ${minutes}m`
 }
 
+function formatElapsed(start: Date, now: Date): string {
+  const ms = now.getTime() - start.getTime()
+  const totalSec = Math.max(0, Math.floor(ms / 1000))
+  const h = Math.floor(totalSec / 3600).toString().padStart(2, '0')
+  const m = Math.floor((totalSec % 3600) / 60).toString().padStart(2, '0')
+  const s = (totalSec % 60).toString().padStart(2, '0')
+  return `${h}:${m}:${s}`
+}
+
 export function NextShiftCard({ registration }: Props) {
   const [countdown, setCountdown] = useState(computeCountdown(registration.positionDate, registration.positionStartTime))
+  const [activeRecord, setActiveRecord] = useState<TimeRecord | null>(null)
+  const [, setTick] = useState(0)
   const navigate = useNavigate()
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    api.get<TimeRecord[]>('/time/my').then((res) => {
+      const active = res.data.find(
+        (r) => String(r.registrationId) === String(registration.id) && r.clockOut == null
+      )
+      setActiveRecord(active ?? null)
+    }).catch(() => setActiveRecord(null))
+  }, [registration.id])
+
+  useEffect(() => {
     const i = setInterval(() => {
       setCountdown(computeCountdown(registration.positionDate, registration.positionStartTime))
+      setTick((t) => t + 1)
     }, 1000)
     return () => clearInterval(i)
   }, [registration.positionDate, registration.positionStartTime])
@@ -42,6 +63,22 @@ export function NextShiftCard({ registration }: Props) {
     } catch (e: any) {
       setError(e.response?.data?.message || 'Clock-in selhal')
     }
+  }
+
+  if (activeRecord) {
+    const elapsed = formatElapsed(parseUtc(activeRecord.clockIn), new Date())
+    return (
+      <div className="bg-gradient-to-br from-blue-500 to-blue-700 text-white rounded-xl p-5 shadow-lg">
+        <div className="text-sm opacity-90">{registration.eventName} · {registration.positionName}</div>
+        <div className="text-2xl font-bold mt-1">▶ Pracuješ — {elapsed}</div>
+        <button
+          onClick={() => navigate('/my-time')}
+          className="mt-4 w-full py-3 bg-white text-blue-700 rounded-lg font-bold text-base hover:bg-blue-50"
+        >
+          Otevřít time tracker
+        </button>
+      </div>
+    )
   }
 
   return (
