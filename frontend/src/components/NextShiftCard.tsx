@@ -59,7 +59,7 @@ export function NextShiftCard({ registration }: Props) {
   const handleClockIn = async () => {
     try {
       await api.post(`/time/clock-in?registrationId=${registration.id}`)
-      navigate('/my-time')
+      navigate('/my-registrations')
     } catch (e: any) {
       setError(e.response?.data?.message || 'Clock-in selhal')
     }
@@ -72,7 +72,7 @@ export function NextShiftCard({ registration }: Props) {
         <div className="text-sm opacity-90">{registration.eventName} · {registration.positionName}</div>
         <div className="text-2xl font-bold mt-1">▶ Pracuješ — {elapsed}</div>
         <button
-          onClick={() => navigate('/my-time')}
+          onClick={() => navigate('/my-registrations')}
           className="mt-4 w-full py-3 bg-white text-blue-700 rounded-lg font-bold text-base hover:bg-blue-50"
         >
           Otevřít time tracker
