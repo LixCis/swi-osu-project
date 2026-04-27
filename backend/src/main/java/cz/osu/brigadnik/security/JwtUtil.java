@@ -53,11 +53,15 @@ public class JwtUtil {
         }
     }
 
-    private Claims getClaims(String token) {
+    public Claims parseToken(String token) {
         return Jwts.parser()
                 .verifyWith(getSigningKey())
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
+    }
+
+    private Claims getClaims(String token) {
+        return parseToken(token);
     }
 }
