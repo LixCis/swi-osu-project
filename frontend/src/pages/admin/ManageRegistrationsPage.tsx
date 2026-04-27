@@ -4,7 +4,7 @@ import { LoadingSpinner } from '../../components/LoadingSpinner'
 import { EmptyState } from '../../components/EmptyState'
 import { formatStatus, formatDate } from '../../utils/formatting'
 import { RegistrationStatus } from '../../types'
-import type { Event } from '../../types'
+import type { Event, BulkConflict } from '../../types'
 
 interface RegistrationDetail {
   id: string
@@ -26,6 +26,9 @@ export function ManageRegistrationsPage() {
   const [registrations, setRegistrations] = useState<RegistrationDetail[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [conflicts, setConflicts] = useState<BulkConflict[] | null>(null)
+  void conflicts
 
   useEffect(() => {
     loadEvents()
@@ -92,6 +95,57 @@ export function ManageRegistrationsPage() {
     }
   }
 
+  const handleBulkApprove = async () => {
+    if (selectedIds.size === 0) return
+    const ids = Array.from(selectedIds)
+    if (!window.confirm(`Schválit ${ids.length} registrací?`)) return
+    try {
+      await api.post('/registrations/bulk-approve', { ids })
+      setSelectedIds(new Set())
+      await loadRegistrations()
+    } catch (e: any) {
+      if (e.response?.status === 400 && e.response?.data?.conflicts) {
+        setConflicts(e.response.data.conflicts)
+      } else {
+        alert(e.response?.data?.message || 'Bulk approve selhal')
+      }
+    }
+  }
+
+  const handleBulkReject = async () => {
+    if (selectedIds.size === 0) return
+    const ids = Array.from(selectedIds)
+    if (!window.confirm(`Zamítnout ${ids.length} registrací?`)) return
+    await api.post('/registrations/bulk-reject', { ids })
+    setSelectedIds(new Set())
+    await loadRegistrations()
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return
+    const ids = Array.from(selectedIds)
+    if (!window.confirm(`Smazat ${ids.length} registrací? Tato akce je nevratná.`)) return
+    await api.post('/registrations/bulk-delete', { ids })
+    setSelectedIds(new Set())
+    await loadRegistrations()
+  }
+
+  const handleApproveAllPending = async () => {
+    const pendingIds = registrations
+      .filter((r) => r.status === 'PENDING')
+      .map((r) => r.id)
+    if (pendingIds.length === 0) return
+    if (!window.confirm(`Schválit všechny pending registrace (${pendingIds.length})?`)) return
+    try {
+      await api.post('/registrations/bulk-approve', { ids: pendingIds })
+      await loadRegistrations()
+    } catch (e: any) {
+      if (e.response?.status === 400 && e.response?.data?.conflicts) {
+        setConflicts(e.response.data.conflicts)
+      }
+    }
+  }
+
   if (loading) return <LoadingSpinner message="Loading registrations..." fullScreen />
 
   if (events.length === 0) {
@@ -141,6 +195,35 @@ export function ManageRegistrationsPage() {
         </select>
       </div>
 
+      {registrations.length > 0 && (() => {
+        const selectedEvent = events.find((e) => e.id === selectedEventId)
+        const pendingCount = registrations.filter((r) => r.status === 'PENDING').length
+        return (
+          <div className="px-4 py-3 border-b border-slate-200 bg-slate-50 rounded-t-lg mb-0">
+            <div className="flex items-center justify-between mb-2">
+              <strong>{selectedEvent?.name}</strong>
+              {pendingCount > 0 && (
+                <button
+                  onClick={handleApproveAllPending}
+                  className="px-3 py-1.5 bg-blue-600 text-white rounded text-sm font-semibold hover:bg-blue-700"
+                >
+                  ⚡ Approve all pending ({pendingCount})
+                </button>
+              )}
+            </div>
+            {selectedIds.size > 0 && (
+              <div className="flex gap-2 items-center text-sm">
+                <span className="text-slate-600">{selectedIds.size} of {registrations.length} selected</span>
+                <button onClick={handleBulkApprove} className="px-2.5 py-1 bg-emerald-600 text-white rounded text-xs font-semibold">Approve</button>
+                <button onClick={handleBulkReject} className="px-2.5 py-1 bg-amber-500 text-white rounded text-xs font-semibold">Reject</button>
+                <button onClick={handleBulkDelete} className="px-2.5 py-1 bg-white border border-slate-300 rounded text-xs">Delete</button>
+                <button onClick={() => setSelectedIds(new Set())} className="ml-auto text-xs text-slate-500">Clear</button>
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
       {registrations.length === 0 ? (
         <div className="bg-white p-6 rounded-lg shadow text-center text-gray-500">
           No registrations for this event yet.
@@ -150,6 +233,19 @@ export function ManageRegistrationsPage() {
           <table className="w-full">
             <thead className="bg-gray-200">
               <tr>
+                <th className="w-8 p-2">
+                  <input
+                    type="checkbox"
+                    checked={registrations.length > 0 && selectedIds.size === registrations.length}
+                    onChange={() => {
+                      if (selectedIds.size === registrations.length) {
+                        setSelectedIds(new Set())
+                      } else {
+                        setSelectedIds(new Set(registrations.map((r) => r.id)))
+                      }
+                    }}
+                  />
+                </th>
                 <th className="px-6 py-3 text-left font-semibold">Worker</th>
                 <th className="px-6 py-3 text-left font-semibold">Position</th>
                 <th className="px-6 py-3 text-left font-semibold">Date & Time</th>
@@ -164,6 +260,18 @@ export function ManageRegistrationsPage() {
                 const isPending = reg.status === RegistrationStatus.PENDING
                 return (
                   <tr key={reg.id} className="hover:bg-gray-50">
+                    <td className="p-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(reg.id)}
+                        onChange={() => {
+                          const next = new Set(selectedIds)
+                          if (next.has(reg.id)) next.delete(reg.id)
+                          else next.add(reg.id)
+                          setSelectedIds(next)
+                        }}
+                      />
+                    </td>
                     <td className="px-6 py-4">
                       <div className="font-medium">{reg.workerName || 'Worker'}</div>
                       {reg.workerEmail && (
