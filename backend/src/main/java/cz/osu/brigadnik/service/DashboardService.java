@@ -2,10 +2,14 @@ package cz.osu.brigadnik.service;
 
 import cz.osu.brigadnik.dto.BreakDto;
 import cz.osu.brigadnik.dto.DashboardDto;
+import cz.osu.brigadnik.dto.LiveWorkerDto;
 import cz.osu.brigadnik.dto.TimeRecordAdminDto;
+import cz.osu.brigadnik.entity.Break;
 import cz.osu.brigadnik.entity.Event;
 import cz.osu.brigadnik.entity.Registration;
 import cz.osu.brigadnik.entity.TimeRecord;
+import cz.osu.brigadnik.enums.LiveWorkerStatus;
+import cz.osu.brigadnik.enums.RegistrationStatus;
 import cz.osu.brigadnik.exception.ResourceNotFoundException;
 import cz.osu.brigadnik.repository.BreakRepository;
 import cz.osu.brigadnik.repository.EventRepository;
@@ -14,6 +18,7 @@ import cz.osu.brigadnik.repository.TimeRecordRepository;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -102,6 +107,8 @@ public class DashboardService {
                 })
                 .collect(Collectors.toList());
 
+        List<LiveWorkerDto> liveWorkers = computeLiveWorkers(eventId);
+
         return DashboardDto.builder()
                 .eventId(event.getId())
                 .eventName(event.getName())
@@ -109,6 +116,7 @@ public class DashboardService {
                 .totalHours(totalHours)
                 .totalCost(totalCost)
                 .workers(workers)
+                .liveWorkers(liveWorkers)
                 .build();
     }
 
@@ -157,5 +165,58 @@ public class DashboardService {
                 .totalAmount(totalAmount)
                 .breaks(breakDtos)
                 .build();
+    }
+
+    public LiveWorkerStatus computeStatus(Registration registration, List<TimeRecord> records, BreakRepository breakRepo) {
+        List<TimeRecord> forThisReg = records.stream()
+                .filter(t -> t.getRegistration() == null
+                        || (t.getRegistration() != null && t.getRegistration().getId() != null
+                            && t.getRegistration().getId().equals(registration.getId())))
+                .collect(Collectors.toList());
+        if (forThisReg.isEmpty()) return LiveWorkerStatus.NOT_ARRIVED;
+
+        TimeRecord latest = forThisReg.get(forThisReg.size() - 1);
+        if (latest.getClockOut() != null) return LiveWorkerStatus.FINISHED;
+
+        List<Break> breaks = breakRepo.findByTimeRecordId(latest.getId());
+        boolean hasOpenBreak = breaks.stream().anyMatch(b -> b.getEndTime() == null);
+        return hasOpenBreak ? LiveWorkerStatus.ON_BREAK : LiveWorkerStatus.WORKING;
+    }
+
+    public List<LiveWorkerDto> computeLiveWorkers(Long eventId) {
+        List<Registration> regs = registrationRepository.findByPositionEventId(eventId).stream()
+                .filter(r -> r.getStatus() == RegistrationStatus.APPROVED)
+                .collect(Collectors.toList());
+        List<LiveWorkerDto> result = new ArrayList<>();
+        for (Registration r : regs) {
+            List<TimeRecord> records = timeRecordRepository.findByRegistrationId(r.getId());
+            LiveWorkerStatus status = computeStatus(r, records, breakRepository);
+            LocalDateTime since = computeSince(status, records);
+            result.add(LiveWorkerDto.builder()
+                    .workerId(r.getWorker().getId())
+                    .workerName(r.getWorker().getFirstName() + " " + r.getWorker().getLastName())
+                    .positionName(r.getPosition().getName())
+                    .status(status)
+                    .since(since)
+                    .eventId(eventId)
+                    .registrationId(r.getId())
+                    .build());
+        }
+        return result;
+    }
+
+    private LocalDateTime computeSince(LiveWorkerStatus status, List<TimeRecord> records) {
+        if (records.isEmpty()) return null;
+        TimeRecord latest = records.get(records.size() - 1);
+        if (status == LiveWorkerStatus.WORKING) return latest.getClockIn();
+        if (status == LiveWorkerStatus.FINISHED) return latest.getClockOut();
+        if (status == LiveWorkerStatus.ON_BREAK) {
+            List<Break> breaks = breakRepository.findByTimeRecordId(latest.getId());
+            return breaks.stream()
+                    .filter(b -> b.getEndTime() == null)
+                    .map(b -> b.getStartTime())
+                    .findFirst().orElse(null);
+        }
+        return null;
     }
 }

@@ -25,6 +25,8 @@ public class DashboardDto {
 
     private List<WorkerSummaryDto> workers;
 
+    private List<LiveWorkerDto> liveWorkers;
+
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
