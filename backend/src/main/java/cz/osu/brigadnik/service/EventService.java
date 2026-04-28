@@ -5,9 +5,12 @@ import cz.osu.brigadnik.entity.Event;
 import cz.osu.brigadnik.entity.User;
 import cz.osu.brigadnik.exception.ResourceNotFoundException;
 import cz.osu.brigadnik.repository.EventRepository;
+import cz.osu.brigadnik.repository.EventSpecifications;
 import cz.osu.brigadnik.repository.UserRepository;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -76,6 +79,21 @@ public class EventService {
             throw new ResourceNotFoundException("Event not found");
         }
         eventRepository.deleteById(id);
+    }
+
+    public List<EventDto> findEvents(String search, LocalDate from, LocalDate to) {
+        Specification<Event> spec = Specification.where(EventSpecifications.nameOrLocationContains(search))
+                .and(EventSpecifications.startDateFrom(from))
+                .and(EventSpecifications.endDateTo(to));
+        return eventRepository.findAll(spec).stream().map(this::entityToDto).collect(Collectors.toList());
+    }
+
+    public List<EventDto> findMyEvents(Long userId, String search, LocalDate from, LocalDate to) {
+        Specification<Event> spec = Specification.where(EventSpecifications.createdBy(userId))
+                .and(EventSpecifications.nameOrLocationContains(search))
+                .and(EventSpecifications.startDateFrom(from))
+                .and(EventSpecifications.endDateTo(to));
+        return eventRepository.findAll(spec).stream().map(this::entityToDto).collect(Collectors.toList());
     }
 
     private EventDto entityToDto(Event event) {

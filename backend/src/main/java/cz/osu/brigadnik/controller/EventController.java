@@ -3,12 +3,14 @@ package cz.osu.brigadnik.controller;
 import cz.osu.brigadnik.dto.EventDto;
 import cz.osu.brigadnik.service.EventService;
 import jakarta.validation.Valid;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -22,17 +24,22 @@ public class EventController {
     }
 
     @GetMapping
-    public ResponseEntity<List<EventDto>> getAllEvents() {
-        List<EventDto> events = eventService.getAllEvents();
-        return ResponseEntity.ok(events);
+    public ResponseEntity<List<EventDto>> getAllEvents(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo) {
+        return ResponseEntity.ok(eventService.findEvents(search, dateFrom, dateTo));
     }
 
     @GetMapping("/my")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<EventDto>> getMyEvents(Authentication auth) {
+    public ResponseEntity<List<EventDto>> getMyEvents(
+            Authentication auth,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo) {
         Long userId = extractUserIdFromAuth(auth);
-        List<EventDto> events = eventService.getMyEvents(userId);
-        return ResponseEntity.ok(events);
+        return ResponseEntity.ok(eventService.findMyEvents(userId, search, dateFrom, dateTo));
     }
 
     @GetMapping("/{id}")

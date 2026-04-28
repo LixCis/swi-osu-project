@@ -13,8 +13,10 @@ import cz.osu.brigadnik.repository.EventRepository;
 import cz.osu.brigadnik.repository.BreakRepository;
 import cz.osu.brigadnik.repository.PositionRepository;
 import cz.osu.brigadnik.repository.RegistrationRepository;
+import cz.osu.brigadnik.repository.RegistrationSpecifications;
 import cz.osu.brigadnik.repository.TimeRecordRepository;
 import cz.osu.brigadnik.repository.UserRepository;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -199,6 +201,26 @@ public class RegistrationService {
         for (Long id : ids) {
             deleteRegistration(id);
         }
+    }
+
+    public List<RegistrationDto> findMyRegistrations(Long workerId, RegistrationStatus status, Long eventId) {
+        Specification<Registration> spec = Specification.where(RegistrationSpecifications.forWorker(workerId))
+                .and(RegistrationSpecifications.hasStatus(status))
+                .and(RegistrationSpecifications.forEvent(eventId));
+        return registrationRepository.findAll(spec).stream().map(this::entityToDto).collect(Collectors.toList());
+    }
+
+    public List<RegistrationDto> findEventRegistrations(Long eventId, Long userId,
+                                                        String search, RegistrationStatus status,
+                                                        LocalDate dateFrom, LocalDate dateTo) {
+        Event event = eventRepository.findById(eventId).orElseThrow(() -> new ResourceNotFoundException("Event not found"));
+        if (!event.getCreatedBy().getId().equals(userId)) throw new IllegalAccessError("Forbidden");
+        Specification<Registration> spec = Specification.where(RegistrationSpecifications.forEvent(eventId))
+                .and(RegistrationSpecifications.workerNameContains(search))
+                .and(RegistrationSpecifications.hasStatus(status))
+                .and(RegistrationSpecifications.positionDateFrom(dateFrom))
+                .and(RegistrationSpecifications.positionDateTo(dateTo));
+        return registrationRepository.findAll(spec).stream().map(this::entityToDto).collect(Collectors.toList());
     }
 
     private void verifyAdminOwnership(Registration r, Long adminId) {

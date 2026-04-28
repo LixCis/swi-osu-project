@@ -2,8 +2,10 @@ package cz.osu.brigadnik.controller;
 
 import cz.osu.brigadnik.dto.BulkActionRequest;
 import cz.osu.brigadnik.dto.RegistrationDto;
+import cz.osu.brigadnik.enums.RegistrationStatus;
 import cz.osu.brigadnik.service.RegistrationService;
 import jakarta.validation.Valid;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -11,6 +13,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -30,10 +33,11 @@ public class RegistrationController {
     }
 
     @GetMapping("/api/registrations/my")
-    public ResponseEntity<List<RegistrationDto>> getMyRegistrations() {
+    public ResponseEntity<List<RegistrationDto>> getMyRegistrations(
+            @RequestParam(required = false) RegistrationStatus status,
+            @RequestParam(required = false) Long eventId) {
         Long workerId = extractUserIdFromContext();
-        List<RegistrationDto> registrations = registrationService.getMyRegistrations(workerId);
-        return ResponseEntity.ok(registrations);
+        return ResponseEntity.ok(registrationService.findMyRegistrations(workerId, status, eventId));
     }
 
     @GetMapping("/api/registrations/my/upcoming")
@@ -45,10 +49,14 @@ public class RegistrationController {
 
     @GetMapping("/api/events/{eventId}/registrations")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<RegistrationDto>> getEventRegistrations(@PathVariable Long eventId) {
+    public ResponseEntity<List<RegistrationDto>> getEventRegistrations(
+            @PathVariable Long eventId,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) RegistrationStatus status,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo) {
         Long userId = extractUserIdFromContext();
-        List<RegistrationDto> registrations = registrationService.getRegistrationsByEventId(eventId, userId);
-        return ResponseEntity.ok(registrations);
+        return ResponseEntity.ok(registrationService.findEventRegistrations(eventId, userId, search, status, dateFrom, dateTo));
     }
 
     @PutMapping("/api/registrations/{id}/approve")
