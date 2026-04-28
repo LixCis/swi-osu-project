@@ -133,3 +133,22 @@ export interface BulkConflict {
 export interface BulkConflictResponse {
   conflicts: BulkConflict[]
 }
+
+export const LiveWorkerStatus = {
+  NOT_ARRIVED: 'NOT_ARRIVED',
+  WORKING: 'WORKING',
+  ON_BREAK: 'ON_BREAK',
+  FINISHED: 'FINISHED'
+} as const
+
+export type LiveWorkerStatus = typeof LiveWorkerStatus[keyof typeof LiveWorkerStatus]
+
+export interface LiveWorkerDto {
+  workerId: string
+  workerName: string
+  positionName: string
+  status: LiveWorkerStatus
+  since: string | null
+  eventId: string
+  registrationId: string
+}
