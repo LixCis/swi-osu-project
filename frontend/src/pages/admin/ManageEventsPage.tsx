@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import api from '../../api/axios'
 import { LoadingSpinner } from '../../components/LoadingSpinner'
+import { SearchFilter } from '../../components/SearchFilter'
+import { useSearchFilters } from '../../hooks/useSearchFilters'
 import type { Event, Position } from '../../types'
 
 export function ManageEventsPage() {
@@ -16,6 +18,7 @@ export function ManageEventsPage() {
     startDate: '',
     endDate: ''
   })
+  const { state, setField, clear } = useSearchFilters({ search: '', dateFrom: '', dateTo: '' })
 
   const [expandedEvent, setExpandedEvent] = useState<string | null>(null)
   const [positions, setPositions] = useState<Position[]>([])
@@ -25,11 +28,15 @@ export function ManageEventsPage() {
 
   useEffect(() => {
     loadEvents()
-  }, [])
+  }, [state.search, state.dateFrom, state.dateTo])
 
   const loadEvents = async () => {
     try {
-      const response = await api.get('/events/my')
+      const params: Record<string, string> = {}
+      if (state.search) params.search = state.search
+      if (state.dateFrom) params.dateFrom = state.dateFrom
+      if (state.dateTo) params.dateTo = state.dateTo
+      const response = await api.get('/events/my', { params })
       setEvents(response.data)
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load events')
@@ -181,6 +188,14 @@ export function ManageEventsPage() {
           {error}
         </div>
       )}
+
+      <SearchFilter
+        searchPlaceholder="Hledat akci…"
+        search={state.search}
+        onSearchChange={(v) => setField('search', v)}
+        resultCount={events.length}
+        onClear={clear}
+      />
 
       {showForm && (
         <div className="bg-white p-6 rounded-lg shadow mb-8">

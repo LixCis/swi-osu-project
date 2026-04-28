@@ -3,6 +3,8 @@ import api from '../api/axios'
 import { TimeTracker } from '../components/TimeTracker'
 import { LoadingSpinner } from '../components/LoadingSpinner'
 import { EmptyState } from '../components/EmptyState'
+import { SearchFilter } from '../components/SearchFilter'
+import { useSearchFilters } from '../hooks/useSearchFilters'
 import { RegistrationStatus } from '../types'
 import { formatStatus } from '../utils/formatting'
 import type { Registration } from '../types'
@@ -11,14 +13,17 @@ export function MyRegistrationsPage() {
   const [registrations, setRegistrations] = useState<Registration[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const { state, setField, clear } = useSearchFilters({ search: '', status: '' })
 
   useEffect(() => {
     loadRegistrations()
-  }, [])
+  }, [state.status])
 
   const loadRegistrations = async () => {
     try {
-      const response = await api.get('/registrations/my')
+      const params: Record<string, string> = {}
+      if (state.status) params.status = state.status
+      const response = await api.get('/registrations/my', { params })
       setRegistrations(response.data)
       setError(null)
     } catch (err: any) {
@@ -35,6 +40,12 @@ export function MyRegistrationsPage() {
     [RegistrationStatus.APPROVED]: 'bg-green-100 text-green-800',
     [RegistrationStatus.REJECTED]: 'bg-red-100 text-red-800'
   }
+
+  const quickFilters = [
+    { key: 'pending', label: 'Pending', field: 'status', value: 'PENDING' },
+    { key: 'approved', label: 'Approved', field: 'status', value: 'APPROVED' },
+    { key: 'rejected', label: 'Rejected', field: 'status', value: 'REJECTED' }
+  ]
 
   const groupedByEvent = registrations.reduce((acc, reg) => {
     const eventName = reg.eventName || 'Event'
@@ -56,6 +67,16 @@ export function MyRegistrationsPage() {
           {error}
         </div>
       )}
+
+      <SearchFilter
+        search=""
+        onSearchChange={() => {}}
+        quickFilters={quickFilters}
+        activeFilters={{ status: state.status }}
+        onFilterToggle={(field, value) => setField(field, value)}
+        resultCount={registrations.length}
+        onClear={clear}
+      />
 
       {registrations.length === 0 ? (
         <EmptyState

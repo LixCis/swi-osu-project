@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import api from '../../api/axios'
 import { LoadingSpinner } from '../../components/LoadingSpinner'
 import { EmptyState } from '../../components/EmptyState'
+import { SearchFilter } from '../../components/SearchFilter'
+import { useSearchFilters } from '../../hooks/useSearchFilters'
 import { formatStatus, formatDate } from '../../utils/formatting'
 import { RegistrationStatus } from '../../types'
 import type { Event, BulkConflict } from '../../types'
@@ -28,6 +30,7 @@ export function ManageRegistrationsPage() {
   const [error, setError] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [conflicts, setConflicts] = useState<BulkConflict[] | null>(null)
+  const { state, setField, clear } = useSearchFilters({ search: '', status: '' })
 
   useEffect(() => {
     loadEvents()
@@ -51,11 +54,14 @@ export function ManageRegistrationsPage() {
     if (selectedEventId) {
       loadRegistrations()
     }
-  }, [selectedEventId])
+  }, [selectedEventId, state.search, state.status])
 
   const loadRegistrations = async () => {
     try {
-      const response = await api.get(`/events/${selectedEventId}/registrations`)
+      const params: Record<string, string> = {}
+      if (state.search) params.search = state.search
+      if (state.status) params.status = state.status
+      const response = await api.get(`/events/${selectedEventId}/registrations`, { params })
       setRegistrations(response.data)
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load registrations')
@@ -193,6 +199,23 @@ export function ManageRegistrationsPage() {
           ))}
         </select>
       </div>
+
+      {registrations.length > 0 && (
+        <SearchFilter
+          searchPlaceholder="Hledat brigádníka…"
+          search={state.search}
+          onSearchChange={(v) => setField('search', v)}
+          quickFilters={[
+            { key: 'pending', label: 'Pending', field: 'status', value: 'PENDING' },
+            { key: 'approved', label: 'Approved', field: 'status', value: 'APPROVED' },
+            { key: 'rejected', label: 'Rejected', field: 'status', value: 'REJECTED' }
+          ]}
+          activeFilters={{ status: state.status }}
+          onFilterToggle={(field, value) => setField(field, value)}
+          resultCount={registrations.length}
+          onClear={clear}
+        />
+      )}
 
       {registrations.length > 0 && (() => {
         const selectedEvent = events.find((e) => e.id === selectedEventId)
