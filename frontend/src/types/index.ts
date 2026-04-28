@@ -108,6 +108,7 @@ export interface DashboardData {
   totalHours: number
   totalCost: number
   workers: WorkerSummary[]
+  liveWorkers?: LiveWorkerDto[]
 }
 
 export interface AuthContextType {

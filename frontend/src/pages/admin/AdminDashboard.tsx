@@ -4,6 +4,8 @@ import { LoadingSpinner } from '../../components/LoadingSpinner'
 import { EmptyState } from '../../components/EmptyState'
 import { formatHours, formatDateTime } from '../../utils/formatting'
 import type { DashboardData, WorkerSummary, TimeRecordAdmin } from '../../types'
+import { useLiveDashboard } from '../../hooks/useLiveDashboard'
+import { LiveKanban } from '../../components/LiveKanban'
 
 export function AdminDashboard() {
   const [events, setEvents] = useState<any[]>([])
@@ -31,11 +33,19 @@ export function AdminDashboard() {
     }
   }
 
+  const { workers: liveWorkers, connected, setInitial } = useLiveDashboard(selectedEventId)
+
   useEffect(() => {
     if (selectedEventId) {
       loadDashboardData()
     }
   }, [selectedEventId])
+
+  useEffect(() => {
+    if (dashboardData?.liveWorkers) {
+      setInitial(dashboardData.liveWorkers)
+    }
+  }, [dashboardData])
 
   const loadDashboardData = async () => {
     try {
@@ -92,6 +102,9 @@ export function AdminDashboard() {
 
       {dashboardData && (
         <>
+          {selectedEventId && (
+            <LiveKanban workers={Array.from(liveWorkers.values())} connected={connected} />
+          )}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div className="bg-white p-6 rounded-lg shadow">
               <h3 className="text-sm text-gray-500 mb-2">Total Workers</h3>
