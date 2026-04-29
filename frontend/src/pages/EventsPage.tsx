@@ -59,7 +59,19 @@ export function EventsPage() {
         onSearchChange={(v) => setField('search', v)}
         quickFilters={quickFilters}
         activeFilters={{ upcoming: state.upcoming, past: state.past }}
-        onFilterToggle={(field, value) => setField(field, value)}
+        onFilterToggle={(field) => {
+          if (field === 'upcoming' && state.upcoming === 'true') {
+            setField('upcoming', '')
+          } else if (field === 'upcoming') {
+            setField('upcoming', 'true')
+            setField('past', '')
+          } else if (field === 'past' && state.past === 'true') {
+            setField('past', '')
+          } else if (field === 'past') {
+            setField('past', 'true')
+            setField('upcoming', '')
+          }
+        }}
         resultCount={events.length}
         onClear={clear}
       />

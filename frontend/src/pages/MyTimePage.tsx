@@ -20,13 +20,13 @@ export function MyTimePage() {
       setTimeRecords(response.data)
       setError(null)
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load time records')
+      setError(err.response?.data?.message || 'Nepodařilo se načíst hodiny')
     } finally {
       setLoading(false)
     }
   }
 
-  if (loading) return <LoadingSpinner message="Loading time records..." fullScreen />
+  if (loading) return <LoadingSpinner message="Načítám tvé hodiny..." fullScreen />
 
   const totalHours = timeRecords.reduce((sum, record) => sum + (record.computedHours ?? 0), 0)
 
@@ -43,7 +43,7 @@ export function MyTimePage() {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <h1 className="text-4xl font-bold mb-8">My Hours</h1>
+      <h1 className="text-4xl font-bold mb-8">Moje hodiny</h1>
 
       {error && (
         <div className="mb-4 p-4 bg-red-100 text-red-700 rounded">
@@ -53,16 +53,16 @@ export function MyTimePage() {
 
       {timeRecords.length > 0 && (
         <div className="mb-8 p-6 bg-blue-50 rounded-lg">
-          <p className="text-sm text-gray-600 mb-1">Total Hours Worked</p>
+          <p className="text-sm text-gray-600 mb-1">Celkové odpracované hodiny</p>
           <p className="font-mono text-4xl font-bold text-blue-800">{formatHours(totalHours)}</p>
         </div>
       )}
 
       {timeRecords.length === 0 ? (
         <EmptyState
-          title="No time records yet"
-          message="Clock in on an approved registration to start tracking your hours."
-          actionLabel="My Registrations"
+          title="Zatím žádné hodiny"
+          message="Zaregistruj se na pozici a začni sledovat své hodiny."
+          actionLabel="Moje registrace"
           actionTo="/my-registrations"
         />
       ) : (

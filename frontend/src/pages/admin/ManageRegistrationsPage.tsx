@@ -3,6 +3,7 @@ import api from '../../api/axios'
 import { LoadingSpinner } from '../../components/LoadingSpinner'
 import { EmptyState } from '../../components/EmptyState'
 import { SearchFilter } from '../../components/SearchFilter'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useSearchFilters } from '../../hooks/useSearchFilters'
 import { formatStatus, formatDate } from '../../utils/formatting'
 import { RegistrationStatus } from '../../types'
@@ -30,6 +31,7 @@ export function ManageRegistrationsPage() {
   const [error, setError] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [conflicts, setConflicts] = useState<BulkConflict[] | null>(null)
+  const [confirmState, setConfirmState] = useState<{ open: boolean; action: () => void | Promise<void>; title: string; message: string; variant?: 'danger' | 'warning' } | null>(null)
   const { state, setField, clear } = useSearchFilters({ search: '', status: '' })
 
   useEffect(() => {
@@ -77,86 +79,129 @@ export function ManageRegistrationsPage() {
     }
   }
 
-  const handleReject = async (registrationId: string, isApproved: boolean) => {
-    const msg = isApproved
+  const handleReject = (registrationId: string, isApproved: boolean) => {
+    const title = isApproved ? 'Cancel Approval' : 'Reject Registration'
+    const message = isApproved
       ? 'Cancel this approved registration? The worker will lose access to this position.'
       : 'Reject this registration?'
-    if (!confirm(msg)) return
-    try {
-      await api.put(`/registrations/${registrationId}/reject`)
-      loadRegistrations()
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to update registration')
-    }
-  }
-
-  const handleDelete = async (registrationId: string) => {
-    if (!confirm('Permanently delete this registration and all related time records?')) return
-    try {
-      await api.delete(`/registrations/${registrationId}`)
-      loadRegistrations()
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to delete registration')
-    }
-  }
-
-  const handleBulkApprove = async () => {
-    if (selectedIds.size === 0) return
-    const ids = Array.from(selectedIds)
-    if (!window.confirm(`Schválit ${ids.length} registrací?`)) return
-    try {
-      await api.post('/registrations/bulk-approve', { ids })
-      await loadRegistrations()
-      setSelectedIds(new Set())
-    } catch (e: any) {
-      if (e.response?.status === 400 && e.response?.data?.conflicts) {
-        setConflicts(e.response.data.conflicts)
-      } else {
-        alert(e.response?.data?.message || 'Bulk approve selhal')
+    setConfirmState({
+      open: true,
+      title,
+      message,
+      variant: 'warning',
+      action: async () => {
+        try {
+          await api.put(`/registrations/${registrationId}/reject`)
+          loadRegistrations()
+        } catch (err: any) {
+          setError(err.response?.data?.message || 'Failed to update registration')
+        }
       }
-    }
+    })
   }
 
-  const handleBulkReject = async () => {
+  const handleDelete = (registrationId: string) => {
+    setConfirmState({
+      open: true,
+      title: 'Delete Registration',
+      message: 'Permanently delete this registration and all related time records?',
+      variant: 'danger',
+      action: async () => {
+        try {
+          await api.delete(`/registrations/${registrationId}`)
+          loadRegistrations()
+        } catch (err: any) {
+          setError(err.response?.data?.message || 'Failed to delete registration')
+        }
+      }
+    })
+  }
+
+  const handleBulkApprove = () => {
     if (selectedIds.size === 0) return
     const ids = Array.from(selectedIds)
-    if (!window.confirm(`Zamítnout ${ids.length} registrací?`)) return
-    try {
-      await api.post('/registrations/bulk-reject', { ids })
-      await loadRegistrations()
-      setSelectedIds(new Set())
-    } catch (e: any) {
-      setError(e.response?.data?.message || 'Bulk reject selhal')
-    }
+    setConfirmState({
+      open: true,
+      title: 'Approve Registrations',
+      message: `Approve ${ids.length} registration(s)?`,
+      action: async () => {
+        try {
+          await api.post('/registrations/bulk-approve', { ids })
+          await loadRegistrations()
+          setSelectedIds(new Set())
+        } catch (e: any) {
+          if (e.response?.status === 400 && e.response?.data?.conflicts) {
+            setConflicts(e.response.data.conflicts)
+          } else {
+            setError(e.response?.data?.message || 'Bulk approve failed')
+          }
+        }
+      }
+    })
   }
 
-  const handleBulkDelete = async () => {
+  const handleBulkReject = () => {
     if (selectedIds.size === 0) return
     const ids = Array.from(selectedIds)
-    if (!window.confirm(`Smazat ${ids.length} registrací? Tato akce je nevratná.`)) return
-    try {
-      await api.post('/registrations/bulk-delete', { ids })
-      await loadRegistrations()
-      setSelectedIds(new Set())
-    } catch (e: any) {
-      setError(e.response?.data?.message || 'Bulk delete selhal')
-    }
+    setConfirmState({
+      open: true,
+      title: 'Reject Registrations',
+      message: `Reject ${ids.length} registration(s)?`,
+      variant: 'warning',
+      action: async () => {
+        try {
+          await api.post('/registrations/bulk-reject', { ids })
+          await loadRegistrations()
+          setSelectedIds(new Set())
+        } catch (e: any) {
+          setError(e.response?.data?.message || 'Bulk reject failed')
+        }
+      }
+    })
   }
 
-  const handleApproveAllPending = async () => {
+  const handleBulkDelete = () => {
+    if (selectedIds.size === 0) return
+    const ids = Array.from(selectedIds)
+    setConfirmState({
+      open: true,
+      title: 'Delete Registrations',
+      message: `Delete ${ids.length} registration(s)? This action cannot be undone.`,
+      variant: 'danger',
+      action: async () => {
+        try {
+          await api.post('/registrations/bulk-delete', { ids })
+          await loadRegistrations()
+          setSelectedIds(new Set())
+        } catch (e: any) {
+          setError(e.response?.data?.message || 'Bulk delete failed')
+        }
+      }
+    })
+  }
+
+  const handleApproveAllPending = () => {
     const pendingIds = registrations
       .filter((r) => r.status === 'PENDING')
       .map((r) => r.id)
     if (pendingIds.length === 0) return
-    if (!window.confirm(`Schválit všechny pending registrace (${pendingIds.length})?`)) return
-    try {
-      await api.post('/registrations/bulk-approve', { ids: pendingIds })
-      await loadRegistrations()
-    } catch (e: any) {
-      if (e.response?.status === 400 && e.response?.data?.conflicts) {
-        setConflicts(e.response.data.conflicts)
+    setConfirmState({
+      open: true,
+      title: 'Approve All Pending',
+      message: `Approve all ${pendingIds.length} pending registration(s)?`,
+      action: async () => {
+        try {
+          await api.post('/registrations/bulk-approve', { ids: pendingIds })
+          await loadRegistrations()
+        } catch (e: any) {
+          if (e.response?.status === 400 && e.response?.data?.conflicts) {
+            setConflicts(e.response.data.conflicts)
+          } else {
+            setError(e.response?.data?.message || 'Approve all pending failed')
+          }
+        }
       }
-    }
+    })
   }
 
   if (loading) return <LoadingSpinner message="Loading registrations..." fullScreen />
@@ -183,6 +228,14 @@ export function ManageRegistrationsPage() {
 
   return (
     <div className="max-w-6xl mx-auto">
+      <ConfirmDialog
+        open={confirmState?.open ?? false}
+        title={confirmState?.title ?? ''}
+        message={confirmState?.message ?? ''}
+        onConfirm={async () => { await confirmState?.action(); setConfirmState(null); }}
+        onCancel={() => setConfirmState(null)}
+        variant={confirmState?.variant}
+      />
       <h1 className="text-4xl font-bold mb-8">Manage Registrations</h1>
 
       {error && (

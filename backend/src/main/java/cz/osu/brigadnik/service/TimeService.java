@@ -164,6 +164,7 @@ public class TimeService {
     @Transactional(readOnly = true)
     public List<TimeRecordDto> getMyTimeRecords(Long workerId) {
         return timeRecordRepository.findByWorkerId(workerId).stream()
+                .sorted((a, b) -> b.getId().compareTo(a.getId()))
                 .map(this::entityToDto)
                 .collect(Collectors.toList());
     }

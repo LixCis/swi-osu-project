@@ -27,13 +27,13 @@ export function MyRegistrationsPage() {
       setRegistrations(response.data)
       setError(null)
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load registrations')
+      setError(err.response?.data?.message || 'Nepodařilo se načíst registrace')
     } finally {
       setLoading(false)
     }
   }
 
-  if (loading) return <LoadingSpinner message="Loading registrations..." fullScreen />
+  if (loading) return <LoadingSpinner message="Načítám registrace..." fullScreen />
 
   const statusColors = {
     [RegistrationStatus.PENDING]: 'bg-yellow-100 text-yellow-800',
@@ -42,9 +42,9 @@ export function MyRegistrationsPage() {
   }
 
   const quickFilters = [
-    { key: 'pending', label: 'Pending', field: 'status', value: 'PENDING' },
-    { key: 'approved', label: 'Approved', field: 'status', value: 'APPROVED' },
-    { key: 'rejected', label: 'Rejected', field: 'status', value: 'REJECTED' }
+    { key: 'pending', label: 'Čekající', field: 'status', value: 'PENDING' },
+    { key: 'approved', label: 'Schváleno', field: 'status', value: 'APPROVED' },
+    { key: 'rejected', label: 'Zamítnuto', field: 'status', value: 'REJECTED' }
   ]
 
   const groupedByEvent = registrations.reduce((acc, reg) => {
@@ -60,7 +60,7 @@ export function MyRegistrationsPage() {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <h1 className="text-4xl font-bold mb-8">My Registrations</h1>
+      <h1 className="text-4xl font-bold mb-8">Moje registrace</h1>
 
       {error && (
         <div className="mb-4 p-4 bg-red-100 text-red-700 rounded">
@@ -80,9 +80,9 @@ export function MyRegistrationsPage() {
 
       {registrations.length === 0 ? (
         <EmptyState
-          title="No registrations yet"
-          message="Browse available events and sign up for positions."
-          actionLabel="Browse Events"
+          title="Zatím žádné registrace"
+          message="Procházej dostupné akce a přihlašuj se na pozice."
+          actionLabel="Procházet akce"
           actionTo="/events"
         />
       ) : (
@@ -99,10 +99,10 @@ export function MyRegistrationsPage() {
                           {reg.positionName || 'Position'}
                         </p>
                         <p className="text-gray-600 mb-1">
-                          <strong>Date:</strong> {reg.positionDate}
+                          <strong>Datum:</strong> {reg.positionDate}
                         </p>
                         <p className="text-gray-600">
-                          <strong>Time:</strong> {reg.positionStartTime} – {reg.positionEndTime}
+                          <strong>Čas:</strong> {reg.positionStartTime} – {reg.positionEndTime}
                         </p>
                       </div>
                       <span className={`px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap ${statusColors[reg.status]}`}>
@@ -117,7 +117,7 @@ export function MyRegistrationsPage() {
                     )}
                     {reg.status === RegistrationStatus.PENDING && (
                       <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
-                        Waiting for admin approval. You'll be able to clock in once approved.
+                        Čekáš na schválení administrátorem. Jakmile bude schváleno, budete moci začít zaznamenávat čas.
                       </div>
                     )}
                   </div>

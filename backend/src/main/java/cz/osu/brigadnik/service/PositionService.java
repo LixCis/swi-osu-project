@@ -51,6 +51,14 @@ public class PositionService {
             throw new IllegalAccessError("Forbidden");
         }
 
+        if (dto.getStartTime().isAfter(dto.getEndTime()) || dto.getStartTime().equals(dto.getEndTime())) {
+            throw new IllegalArgumentException("Start time must be before end time");
+        }
+
+        if (dto.getDate().isBefore(event.getStartDate()) || dto.getDate().isAfter(event.getEndDate())) {
+            throw new IllegalArgumentException("Position date must be within event date range");
+        }
+
         Position position = Position.builder()
                 .name(dto.getName())
                 .capacity(dto.getCapacity())
@@ -71,6 +79,15 @@ public class PositionService {
 
         if (!position.getEvent().getCreatedBy().getId().equals(userId)) {
             throw new IllegalAccessError("Forbidden");
+        }
+
+        if (dto.getStartTime().isAfter(dto.getEndTime()) || dto.getStartTime().equals(dto.getEndTime())) {
+            throw new IllegalArgumentException("Start time must be before end time");
+        }
+
+        Event event = position.getEvent();
+        if (dto.getDate().isBefore(event.getStartDate()) || dto.getDate().isAfter(event.getEndDate())) {
+            throw new IllegalArgumentException("Position date must be within event date range");
         }
 
         position.setName(dto.getName());

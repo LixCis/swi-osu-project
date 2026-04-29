@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import api from '../../api/axios'
 import { LoadingSpinner } from '../../components/LoadingSpinner'
 import { SearchFilter } from '../../components/SearchFilter'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useSearchFilters } from '../../hooks/useSearchFilters'
 import type { Event, Position } from '../../types'
 
@@ -25,6 +26,7 @@ export function ManageEventsPage() {
   const [showPositionForm, setShowPositionForm] = useState(false)
   const [editingPositionId, setEditingPositionId] = useState<string | null>(null)
   const [positionForm, setPositionForm] = useState({ name: '', capacity: '', hourlyRate: '', date: '', startTime: '', endTime: '' })
+  const [confirmState, setConfirmState] = useState<{ open: boolean; action: () => void; title: string; message: string; variant?: 'danger' } | null>(null)
 
   useEffect(() => {
     loadEvents()
@@ -96,13 +98,20 @@ export function ManageEventsPage() {
   }
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Delete event "${name}"? This cannot be undone.`)) return
-    try {
-      await api.delete(`/events/${id}`)
-      loadEvents()
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to delete event')
-    }
+    setConfirmState({
+      open: true,
+      title: 'Delete Event',
+      message: `Delete event "${name}"? This cannot be undone.`,
+      variant: 'danger',
+      action: async () => {
+        try {
+          await api.delete(`/events/${id}`)
+          loadEvents()
+        } catch (err: any) {
+          setError(err.response?.data?.message || 'Failed to delete event')
+        }
+      }
+    })
   }
 
   const handlePositionSubmit = async (e: React.FormEvent) => {
@@ -145,14 +154,21 @@ export function ManageEventsPage() {
   }
 
   const handleDeletePosition = async (posId: string, name: string) => {
-    if (!confirm(`Delete position "${name}"?`)) return
-    if (!expandedEvent) return
-    try {
-      await api.delete(`/positions/${posId}`)
-      await loadPositions(expandedEvent)
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to delete position')
-    }
+    setConfirmState({
+      open: true,
+      title: 'Delete Position',
+      message: `Delete position "${name}"?`,
+      variant: 'danger',
+      action: async () => {
+        if (!expandedEvent) return
+        try {
+          await api.delete(`/positions/${posId}`)
+          await loadPositions(expandedEvent)
+        } catch (err: any) {
+          setError(err.response?.data?.message || 'Failed to delete position')
+        }
+      }
+    })
   }
 
   const cancelEventForm = () => {
@@ -173,6 +189,14 @@ export function ManageEventsPage() {
 
   return (
     <div className="max-w-6xl mx-auto">
+      <ConfirmDialog
+        open={confirmState?.open ?? false}
+        title={confirmState?.title ?? ''}
+        message={confirmState?.message ?? ''}
+        onConfirm={() => { confirmState?.action(); setConfirmState(null); }}
+        onCancel={() => setConfirmState(null)}
+        variant={confirmState?.variant}
+      />
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-4xl font-bold">Manage Events</h1>
         <button

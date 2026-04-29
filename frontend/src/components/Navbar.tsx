@@ -1,10 +1,13 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { Role } from '../types'
 
 export function Navbar() {
   const { user, logout, isAuthenticated } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+
+  const isActive = (path: string) => location.pathname === path
 
   const handleLogout = () => {
     logout()
@@ -23,34 +26,34 @@ export function Navbar() {
             <>
               <div className="flex items-center gap-6">
                 {user?.role === Role.WORKER && (
-                  <Link to="/home" className="hover:text-blue-200">
-                    Home
+                  <Link to="/home" className={isActive('/home') ? 'font-bold underline text-blue-200' : 'hover:text-blue-200'}>
+                    Domů
                   </Link>
                 )}
-                <Link to="/events" className="hover:text-blue-200">
-                  Events
+                <Link to="/events" className={isActive('/events') ? 'font-bold underline text-blue-200' : 'hover:text-blue-200'}>
+                  Akce
                 </Link>
 
                 {user?.role === Role.WORKER && (
                   <>
-                    <Link to="/my-registrations" className="hover:text-blue-200">
-                      My Registrations
+                    <Link to="/my-registrations" className={isActive('/my-registrations') ? 'font-bold underline text-blue-200' : 'hover:text-blue-200'}>
+                      Moje směny
                     </Link>
-                    <Link to="/my-time" className="hover:text-blue-200">
-                      My Hours
+                    <Link to="/my-time" className={isActive('/my-time') ? 'font-bold underline text-blue-200' : 'hover:text-blue-200'}>
+                      Moje hodiny
                     </Link>
                   </>
                 )}
 
                 {user?.role === Role.ADMIN && (
                   <>
-                    <Link to="/admin/dashboard" className="hover:text-blue-200">
+                    <Link to="/admin/dashboard" className={isActive('/admin/dashboard') ? 'font-bold underline text-blue-200' : 'hover:text-blue-200'}>
                       Dashboard
                     </Link>
-                    <Link to="/admin/manage-events" className="hover:text-blue-200">
+                    <Link to="/admin/manage-events" className={isActive('/admin/manage-events') ? 'font-bold underline text-blue-200' : 'hover:text-blue-200'}>
                       Manage Events
                     </Link>
-                    <Link to="/admin/manage-registrations" className="hover:text-blue-200">
+                    <Link to="/admin/manage-registrations" className={isActive('/admin/manage-registrations') ? 'font-bold underline text-blue-200' : 'hover:text-blue-200'}>
                       Manage Registrations
                     </Link>
                   </>
@@ -72,10 +75,10 @@ export function Navbar() {
           ) : (
             <div className="flex gap-4">
               <Link to="/login" className="hover:text-blue-200">
-                Login
+                Přihlášení
               </Link>
               <Link to="/register" className="hover:text-blue-200">
-                Register
+                Registrace
               </Link>
             </div>
           )}

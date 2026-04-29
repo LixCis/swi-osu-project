@@ -9,6 +9,7 @@ import type { Event, Position, Registration } from '../types'
 
 interface PositionWithRegistration extends Position {
   registration?: Registration
+  approvedCount?: number
 }
 
 export function EventDetailPage() {
@@ -31,7 +32,8 @@ export function EventDetailPage() {
     try {
       const requests: Promise<any>[] = [
         api.get(`/events/${id}`),
-        api.get(`/events/${id}/positions`)
+        api.get(`/events/${id}/positions`),
+        api.get(`/events/${id}/registrations`)
       ]
       if (!isAdmin) {
         requests.push(api.get('/registrations/my'))
@@ -39,13 +41,25 @@ export function EventDetailPage() {
       const results = await Promise.all(requests)
       setEvent(results[0].data)
 
-      const registrationMap = new Map(
-        isAdmin ? [] : results[2].data.map((reg: Registration) => [reg.positionId, reg])
+      const userRegistrationMap = new Map(
+        isAdmin ? [] : results[3].data.map((reg: Registration) => [reg.positionId, reg])
       )
+
+      const allRegistrations = results[2].data
+      const approvedCountByPosition = new Map()
+      allRegistrations.forEach((reg: Registration) => {
+        if (reg.status === RegistrationStatus.APPROVED) {
+          approvedCountByPosition.set(
+            reg.positionId,
+            (approvedCountByPosition.get(reg.positionId) || 0) + 1
+          )
+        }
+      })
 
       const positionsWithReg = results[1].data.map((pos: Position) => ({
         ...pos,
-        registration: registrationMap.get(pos.id)
+        registration: userRegistrationMap.get(pos.id),
+        approvedCount: approvedCountByPosition.get(pos.id) || 0
       }))
 
       setPositions(positionsWithReg)
@@ -144,10 +158,10 @@ export function EventDetailPage() {
                 ) : (
                   <button
                     onClick={() => handleRegister(position.id)}
-                    disabled={registeringId !== null}
+                    disabled={registeringId !== null || (position.approvedCount ?? 0) >= position.capacity}
                     className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:bg-gray-400 font-medium"
                   >
-                    {registeringId === position.id ? 'Registering...' : 'Register'}
+                    {registeringId === position.id ? 'Registering...' : (position.approvedCount ?? 0) >= position.capacity ? 'Full' : 'Register'}
                   </button>
                 )}
               </div>

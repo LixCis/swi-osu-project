@@ -68,6 +68,10 @@ public class EventService {
         User createdBy = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
+        if (dto.getStartDate().isAfter(dto.getEndDate())) {
+            throw new IllegalArgumentException("Start date must be before or equal to end date");
+        }
+
         Event event = Event.builder()
                 .name(dto.getName())
                 .description(dto.getDescription())
@@ -87,6 +91,10 @@ public class EventService {
 
         if (!event.getCreatedBy().getId().equals(userId)) {
             throw new IllegalAccessError("Forbidden");
+        }
+
+        if (dto.getStartDate().isAfter(dto.getEndDate())) {
+            throw new IllegalArgumentException("Start date must be before or equal to end date");
         }
 
         event.setName(dto.getName());
