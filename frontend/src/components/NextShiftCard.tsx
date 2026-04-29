@@ -13,14 +13,14 @@ function computeCountdown(positionDate?: string, positionStartTime?: string): st
   const start = new Date(`${positionDate}T${positionStartTime}Z`)
   const now = new Date()
   const diffMs = start.getTime() - now.getTime()
-  if (diffMs <= 0) return 'Začalo'
+  if (diffMs <= 0) return 'Started'
   const totalMin = Math.floor(diffMs / 60000)
   const days = Math.floor(totalMin / 1440)
   const hours = Math.floor((totalMin % 1440) / 60)
   const minutes = totalMin % 60
-  if (days > 0) return `Začíná za ${days}d ${hours}h ${minutes}m`
-  if (hours > 0) return `Začíná za ${hours}h ${minutes}m`
-  return `Začíná za ${minutes}m`
+  if (days > 0) return `Starts in ${days}d ${hours}h ${minutes}m`
+  if (hours > 0) return `Starts in ${hours}h ${minutes}m`
+  return `Starts in ${minutes}m`
 }
 
 function formatElapsed(start: Date, now: Date): string {
@@ -61,7 +61,7 @@ export function NextShiftCard({ registration }: Props) {
       await api.post(`/time/clock-in?registrationId=${registration.id}`)
       navigate('/my-registrations')
     } catch (e: any) {
-      setError(e.response?.data?.message || 'Clock-in selhal')
+      setError(e.response?.data?.message || 'Clock-in failed')
     }
   }
 
@@ -70,12 +70,12 @@ export function NextShiftCard({ registration }: Props) {
     return (
       <div className="bg-gradient-to-br from-blue-500 to-blue-700 text-white rounded-xl p-5 shadow-lg">
         <div className="text-sm opacity-90">{registration.eventName} · {registration.positionName}</div>
-        <div className="text-2xl font-bold mt-1">▶ Pracuješ — {elapsed}</div>
+        <div className="text-2xl font-bold mt-1">▶ Working — {elapsed}</div>
         <button
           onClick={() => navigate('/my-registrations')}
           className="mt-4 w-full py-3 bg-white text-blue-700 rounded-lg font-bold text-base hover:bg-blue-50"
         >
-          Otevřít time tracker
+          Open time tracker
         </button>
       </div>
     )

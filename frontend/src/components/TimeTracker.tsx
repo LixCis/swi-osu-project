@@ -88,7 +88,7 @@ export function TimeTracker({ registrationId, onStateChange }: TimeTrackerProps)
       const last = matching.length > 0 ? matching[matching.length - 1] : null
       setRecord(active || last)
     } catch {
-      setError('Nepodařilo se načíst stav sledování času')
+      setError('Failed to load time tracking state')
     }
   }
 
@@ -104,7 +104,7 @@ export function TimeTracker({ registrationId, onStateChange }: TimeTrackerProps)
       setRecord(response.data)
       onStateChange?.()
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Nepodařilo se přihlásit do práce')
+      setError(err.response?.data?.message || 'Clock-in failed')
     } finally {
       setLoading(false)
     }
@@ -118,7 +118,7 @@ export function TimeTracker({ registrationId, onStateChange }: TimeTrackerProps)
       setRecord(response.data)
       onStateChange?.()
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Nepodařilo se začít pauzu')
+      setError(err.response?.data?.message || 'Failed to start break')
     } finally {
       setLoading(false)
     }
@@ -132,7 +132,7 @@ export function TimeTracker({ registrationId, onStateChange }: TimeTrackerProps)
       setRecord(response.data)
       onStateChange?.()
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Nepodařilo se skončit pauzu')
+      setError(err.response?.data?.message || 'Failed to end break')
     } finally {
       setLoading(false)
     }
@@ -151,7 +151,7 @@ export function TimeTracker({ registrationId, onStateChange }: TimeTrackerProps)
       setRecord(response.data)
       onStateChange?.()
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Nepodařilo se ukončit směnu')
+      setError(err.response?.data?.message || 'Failed to end shift')
     } finally {
       setLoading(false)
     }
@@ -161,10 +161,10 @@ export function TimeTracker({ registrationId, onStateChange }: TimeTrackerProps)
     <div className="bg-gray-50 p-4 rounded-lg">
       <ConfirmDialog
         open={confirmOpen}
-        title="Ukončit směnu"
-        message="Ukončit směnu? Tím finalizuješ své hodiny pro tuto směnu."
-        confirmLabel="Ukončit"
-        cancelLabel="Zrušit"
+        title="End your work session?"
+        message="This will finalize your hours for this shift."
+        confirmLabel="End"
+        cancelLabel="Cancel"
         onConfirm={confirmClockOut}
         onCancel={() => setConfirmOpen(false)}
         variant="danger"
@@ -177,16 +177,16 @@ export function TimeTracker({ registrationId, onStateChange }: TimeTrackerProps)
 
       <div className="flex flex-wrap items-center gap-6 mb-4">
         <div>
-          <p className="text-sm text-gray-500">Stav</p>
+          <p className="text-sm text-gray-500">Status</p>
           <p className={`text-lg font-semibold ${
             onBreak ? 'text-orange-600' : isClocked ? 'text-green-600' : isDone ? 'text-gray-600' : 'text-gray-400'
           }`}>
-            {onBreak ? '⏸ Pauza' : isClocked ? '▶ Pracuješ' : isDone ? '✓ Hotovo' : 'Nezahájeno'}
+            {onBreak ? '⏸ On Break' : isClocked ? '▶ Working' : isDone ? '✓ Done' : 'Not Started'}
           </p>
         </div>
 
         <div>
-          <p className="text-sm text-gray-500">Odpracovaný čas</p>
+          <p className="text-sm text-gray-500">Work Time</p>
           <p className="text-2xl font-mono font-bold text-green-700">
             {formatElapsed(workElapsed)}
           </p>
@@ -194,7 +194,7 @@ export function TimeTracker({ registrationId, onStateChange }: TimeTrackerProps)
 
         {onBreak && (
           <div>
-            <p className="text-sm text-gray-500">Čas pauzy</p>
+            <p className="text-sm text-gray-500">Break Time</p>
             <p className="text-2xl font-mono font-bold text-orange-600">
               {formatElapsed(breakElapsed)}
             </p>
@@ -209,7 +209,7 @@ export function TimeTracker({ registrationId, onStateChange }: TimeTrackerProps)
             disabled={loading}
             className="px-5 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 text-sm font-medium"
           >
-            ▶ Začít
+            ▶ Start
           </button>
         )}
 
@@ -220,14 +220,14 @@ export function TimeTracker({ registrationId, onStateChange }: TimeTrackerProps)
               disabled={loading}
               className="px-5 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 disabled:bg-gray-400 text-sm font-medium"
             >
-              ⏸ Pauza
+              ⏸ Break
             </button>
             <button
               onClick={handleClockOut}
               disabled={loading}
               className="px-5 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-400 text-sm font-medium"
             >
-              ⏹ Konec
+              ⏹ End
             </button>
           </>
         )}
@@ -238,7 +238,7 @@ export function TimeTracker({ registrationId, onStateChange }: TimeTrackerProps)
             disabled={loading}
             className="px-5 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 text-sm font-medium"
           >
-            ▶ Zpět
+            ▶ Resume
           </button>
         )}
       </div>

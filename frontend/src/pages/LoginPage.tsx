@@ -21,7 +21,7 @@ export function LoginPage() {
       const from = (location.state as any)?.from?.pathname || '/'
       navigate(from)
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Přihlášení se nezdařilo')
+      setError(err.response?.data?.message || 'Login failed')
     } finally {
       setLoading(false)
     }
@@ -43,7 +43,7 @@ export function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full bg-white p-8 rounded-lg shadow">
-        <h1 className="text-3xl font-bold mb-6 text-center">Přihlášení</h1>
+        <h1 className="text-3xl font-bold mb-6 text-center">Login</h1>
 
         <div className="mb-6">
           <p className="text-xs text-gray-500 mb-2 text-center">Quick fill (testing)</p>
@@ -87,7 +87,7 @@ export function LoginPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Heslo
+              Password
             </label>
             <input
               type="password"
@@ -103,14 +103,14 @@ export function LoginPage() {
             disabled={loading}
             className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:bg-gray-400 font-medium"
           >
-            {loading ? 'Přihlašování...' : 'Přihlášení'}
+            {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
 
         <p className="mt-4 text-center text-gray-600">
-          Nemáš účet?{' '}
+          Don't have an account?{' '}
           <Link to="/register" className="text-blue-600 hover:underline">
-            Zaregistruj se
+            Register
           </Link>
         </p>
       </div>

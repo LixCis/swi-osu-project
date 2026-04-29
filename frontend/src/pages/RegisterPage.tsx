@@ -37,7 +37,7 @@ export function RegisterPage() {
       )
       navigate('/')
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Registrace se nezdařila')
+      setError(err.response?.data?.message || 'Registration failed')
     } finally {
       setLoading(false)
     }
@@ -46,7 +46,7 @@ export function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full bg-white p-8 rounded-lg shadow">
-        <h1 className="text-3xl font-bold mb-6 text-center">Registrace</h1>
+        <h1 className="text-3xl font-bold mb-6 text-center">Register</h1>
 
         {error && (
           <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
@@ -71,7 +71,7 @@ export function RegisterPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Heslo
+              Password
             </label>
             <input
               type="password"
@@ -85,7 +85,7 @@ export function RegisterPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Jméno
+              First Name
             </label>
             <input
               type="text"
@@ -99,7 +99,7 @@ export function RegisterPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Příjmení
+              Last Name
             </label>
             <input
               type="text"
@@ -113,7 +113,7 @@ export function RegisterPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Telefon
+              Phone
             </label>
             <input
               type="tel"
@@ -127,7 +127,7 @@ export function RegisterPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Datum narození
+              Date of Birth
             </label>
             <input
               type="date"
@@ -144,14 +144,14 @@ export function RegisterPage() {
             disabled={loading}
             className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:bg-gray-400 font-medium"
           >
-            {loading ? 'Registruji...' : 'Zaregistruj se'}
+            {loading ? 'Registering...' : 'Register'}
           </button>
         </form>
 
         <p className="mt-4 text-center text-gray-600">
-          Už máš účet?{' '}
+          Already have an account?{' '}
           <Link to="/login" className="text-blue-600 hover:underline">
-            Přihlas se
+            Login
           </Link>
         </p>
       </div>

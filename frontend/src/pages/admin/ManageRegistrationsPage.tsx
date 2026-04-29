@@ -263,7 +263,7 @@ export function ManageRegistrationsPage() {
 
       {registrations.length > 0 && (
         <SearchFilter
-          searchPlaceholder="Hledat brigádníka…"
+          searchPlaceholder="Search workers…"
           search={state.search}
           onSearchChange={(v) => setField('search', v)}
           quickFilters={[
@@ -309,7 +309,9 @@ export function ManageRegistrationsPage() {
 
       {registrations.length === 0 ? (
         <div className="bg-white p-6 rounded-lg shadow text-center text-gray-500">
-          No registrations for this event yet.
+          {state.search || state.status
+            ? 'No registrations match the current filter.'
+            : 'No registrations for this event yet.'}
         </div>
       ) : (
         <div className="overflow-x-auto bg-white rounded-lg shadow">
@@ -420,15 +422,15 @@ export function ManageRegistrationsPage() {
       {conflicts && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setConflicts(null)}>
           <div className="bg-white rounded-lg max-w-md w-full p-5" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-red-600 mb-2">Kapacita pozic překročena</h3>
+            <h3 className="text-lg font-bold text-red-600 mb-2">Capacity exceeded</h3>
             <p className="text-sm text-slate-600 mb-3">
-              Tyto registrace nelze schválit, protože by překročily kapacitu pozice. Žádná registrace nebyla změněna.
+              Cannot approve these registrations as they would exceed position capacity. No registrations were changed.
             </p>
             <ul className="space-y-2 mb-4">
               {conflicts.map((c) => (
                 <li key={c.registrationId} className="text-sm border border-slate-200 rounded p-2">
                   <div className="font-semibold">{c.positionName}</div>
-                  <div className="text-xs text-slate-500">Aktuálně schváleno {c.currentApprovedCount} z {c.capacity}</div>
+                  <div className="text-xs text-slate-500">Currently approved {c.currentApprovedCount} of {c.capacity}</div>
                 </li>
               ))}
             </ul>

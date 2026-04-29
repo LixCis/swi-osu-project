@@ -54,7 +54,7 @@ export function EventsPage() {
       )}
 
       <SearchFilter
-        searchPlaceholder="Hledat akci podle názvu nebo místa…"
+        searchPlaceholder="Search events by name or location…"
         search={state.search}
         onSearchChange={(v) => setField('search', v)}
         quickFilters={quickFilters}

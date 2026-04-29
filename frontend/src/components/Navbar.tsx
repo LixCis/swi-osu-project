@@ -27,20 +27,20 @@ export function Navbar() {
               <div className="flex items-center gap-6">
                 {user?.role === Role.WORKER && (
                   <Link to="/home" className={isActive('/home') ? 'font-bold underline text-blue-200' : 'hover:text-blue-200'}>
-                    Domů
+                    Home
                   </Link>
                 )}
                 <Link to="/events" className={isActive('/events') ? 'font-bold underline text-blue-200' : 'hover:text-blue-200'}>
-                  Akce
+                  Events
                 </Link>
 
                 {user?.role === Role.WORKER && (
                   <>
                     <Link to="/my-registrations" className={isActive('/my-registrations') ? 'font-bold underline text-blue-200' : 'hover:text-blue-200'}>
-                      Moje směny
+                      My Registrations
                     </Link>
                     <Link to="/my-time" className={isActive('/my-time') ? 'font-bold underline text-blue-200' : 'hover:text-blue-200'}>
-                      Moje hodiny
+                      My Hours
                     </Link>
                   </>
                 )}
@@ -75,10 +75,10 @@ export function Navbar() {
           ) : (
             <div className="flex gap-4">
               <Link to="/login" className="hover:text-blue-200">
-                Přihlášení
+                Login
               </Link>
               <Link to="/register" className="hover:text-blue-200">
-                Registrace
+                Register
               </Link>
             </div>
           )}

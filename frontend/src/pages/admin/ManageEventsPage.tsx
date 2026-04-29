@@ -214,7 +214,7 @@ export function ManageEventsPage() {
       )}
 
       <SearchFilter
-        searchPlaceholder="Hledat akci…"
+        searchPlaceholder="Search events…"
         search={state.search}
         onSearchChange={(v) => setField('search', v)}
         resultCount={events.length}

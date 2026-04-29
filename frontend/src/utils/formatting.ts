@@ -31,9 +31,9 @@ export function formatDate(iso: string): string {
 
 export function formatStatus(status: string): string {
   const map: Record<string, string> = {
-    PENDING: 'Čekající',
-    APPROVED: 'Schváleno',
-    REJECTED: 'Zamítnuto'
+    PENDING: 'Pending',
+    APPROVED: 'Approved',
+    REJECTED: 'Rejected'
   }
   return map[status] || status
 }

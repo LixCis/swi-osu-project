@@ -9,7 +9,7 @@ interface Props {
   variant?: 'danger' | 'warning' | 'primary'
 }
 
-export function ConfirmDialog({ open, title, message, confirmLabel = 'Potvrdit', cancelLabel = 'Zrušit', onConfirm, onCancel, variant = 'primary' }: Props) {
+export function ConfirmDialog({ open, title, message, confirmLabel = 'Confirm', cancelLabel = 'Cancel', onConfirm, onCancel, variant = 'primary' }: Props) {
   if (!open) return null
   const btnClass = variant === 'danger' ? 'bg-red-600 hover:bg-red-700' : variant === 'warning' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-600 hover:bg-blue-700'
   return (
