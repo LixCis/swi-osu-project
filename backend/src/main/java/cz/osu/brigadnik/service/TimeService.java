@@ -17,6 +17,7 @@ import cz.osu.brigadnik.repository.TimeRecordRepository;
 import cz.osu.brigadnik.repository.UserRepository;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -25,6 +26,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@Transactional
 public class TimeService {
 
     private final TimeRecordRepository timeRecordRepository;
@@ -159,12 +161,14 @@ public class TimeService {
         return entityToDto(timeRecord);
     }
 
+    @Transactional(readOnly = true)
     public List<TimeRecordDto> getMyTimeRecords(Long workerId) {
         return timeRecordRepository.findByWorkerId(workerId).stream()
                 .map(this::entityToDto)
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<TimeRecordAdminDto> getEventTimeRecords(Long eventId) {
         List<Registration> registrations = registrationRepository.findByPositionEventId(eventId);
         return registrations.stream()

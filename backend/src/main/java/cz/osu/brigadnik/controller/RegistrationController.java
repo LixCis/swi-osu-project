@@ -62,21 +62,24 @@ public class RegistrationController {
     @PutMapping("/api/registrations/{id}/approve")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<RegistrationDto> approveRegistration(@PathVariable Long id) {
-        RegistrationDto updatedRegistration = registrationService.approveRegistration(id);
+        Long adminId = extractUserIdFromContext();
+        RegistrationDto updatedRegistration = registrationService.approveRegistration(id, adminId);
         return ResponseEntity.ok(updatedRegistration);
     }
 
     @PutMapping("/api/registrations/{id}/reject")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<RegistrationDto> rejectRegistration(@PathVariable Long id) {
-        RegistrationDto updatedRegistration = registrationService.rejectRegistration(id);
+        Long adminId = extractUserIdFromContext();
+        RegistrationDto updatedRegistration = registrationService.rejectRegistration(id, adminId);
         return ResponseEntity.ok(updatedRegistration);
     }
 
     @DeleteMapping("/api/registrations/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteRegistration(@PathVariable Long id) {
-        registrationService.deleteRegistration(id);
+        Long adminId = extractUserIdFromContext();
+        registrationService.deleteRegistration(id, adminId);
         return ResponseEntity.noContent().build();
     }
 

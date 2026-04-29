@@ -106,7 +106,7 @@ class RegistrationServiceTest {
         when(registrationRepository.findByPositionId(1L)).thenReturn(Arrays.asList(reg1, reg2));
 
         assertThrows(IllegalArgumentException.class, () -> {
-            registrationService.approveRegistration(1L);
+            registrationService.approveRegistration(1L, admin.getId());
         });
     }
 }
