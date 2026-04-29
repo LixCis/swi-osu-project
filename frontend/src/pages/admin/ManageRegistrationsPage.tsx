@@ -106,8 +106,8 @@ export function ManageRegistrationsPage() {
     if (!window.confirm(`Schválit ${ids.length} registrací?`)) return
     try {
       await api.post('/registrations/bulk-approve', { ids })
-      setSelectedIds(new Set())
       await loadRegistrations()
+      setSelectedIds(new Set())
     } catch (e: any) {
       if (e.response?.status === 400 && e.response?.data?.conflicts) {
         setConflicts(e.response.data.conflicts)
@@ -121,18 +121,26 @@ export function ManageRegistrationsPage() {
     if (selectedIds.size === 0) return
     const ids = Array.from(selectedIds)
     if (!window.confirm(`Zamítnout ${ids.length} registrací?`)) return
-    await api.post('/registrations/bulk-reject', { ids })
-    setSelectedIds(new Set())
-    await loadRegistrations()
+    try {
+      await api.post('/registrations/bulk-reject', { ids })
+      await loadRegistrations()
+      setSelectedIds(new Set())
+    } catch (e: any) {
+      setError(e.response?.data?.message || 'Bulk reject selhal')
+    }
   }
 
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return
     const ids = Array.from(selectedIds)
     if (!window.confirm(`Smazat ${ids.length} registrací? Tato akce je nevratná.`)) return
-    await api.post('/registrations/bulk-delete', { ids })
-    setSelectedIds(new Set())
-    await loadRegistrations()
+    try {
+      await api.post('/registrations/bulk-delete', { ids })
+      await loadRegistrations()
+      setSelectedIds(new Set())
+    } catch (e: any) {
+      setError(e.response?.data?.message || 'Bulk delete selhal')
+    }
   }
 
   const handleApproveAllPending = async () => {

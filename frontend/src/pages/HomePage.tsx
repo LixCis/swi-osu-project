@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import api from '../api/axios'
 import { LoadingSpinner } from '../components/LoadingSpinner'
 import { EmptyState } from '../components/EmptyState'
@@ -8,10 +9,11 @@ import type { Registration } from '../types'
 export function HomePage() {
   const [upcoming, setUpcoming] = useState<Registration[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const location = useLocation()
 
   useEffect(() => {
     load()
-  }, [])
+  }, [location.key])
 
   const load = async () => {
     try {

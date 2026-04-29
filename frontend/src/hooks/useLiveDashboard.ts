@@ -20,6 +20,7 @@ export function useLiveDashboard(eventId: string | null): UseLiveDashboardResult
   }
 
   useEffect(() => {
+    setWorkers(new Map())
     if (!eventId) return
     const token = localStorage.getItem('token')
     if (!token) return

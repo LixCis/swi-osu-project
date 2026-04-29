@@ -10,7 +10,7 @@ interface Props {
 
 function computeCountdown(positionDate?: string, positionStartTime?: string): string {
   if (!positionDate || !positionStartTime) return ''
-  const start = new Date(`${positionDate}T${positionStartTime}`)
+  const start = new Date(`${positionDate}T${positionStartTime}Z`)
   const now = new Date()
   const diffMs = start.getTime() - now.getTime()
   if (diffMs <= 0) return 'Začalo'

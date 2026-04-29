@@ -52,11 +52,13 @@ public class TimeService {
         Long eventId = registration.getPosition().getEvent().getId();
         List<TimeRecord> records = timeRecordRepository.findByRegistrationId(registration.getId());
         LiveWorkerStatus status = dashboardService.computeStatus(registration, records, breakRepository);
+        LocalDateTime since = dashboardService.computeSince(status, records);
         LiveWorkerDto dto = LiveWorkerDto.builder()
                 .workerId(registration.getWorker().getId())
                 .workerName(registration.getWorker().getFirstName() + " " + registration.getWorker().getLastName())
                 .positionName(registration.getPosition().getName())
                 .status(status)
+                .since(since)
                 .eventId(eventId)
                 .registrationId(registration.getId())
                 .build();
@@ -76,6 +78,10 @@ public class TimeService {
 
         if (registration.getStatus() != RegistrationStatus.APPROVED) {
             throw new IllegalArgumentException("Registration is not approved");
+        }
+
+        if (timeRecordRepository.findByWorkerIdAndRegistrationIdAndClockOutIsNull(workerId, registrationId).isPresent()) {
+            throw new IllegalArgumentException("Already clocked in to this registration");
         }
 
         TimeRecord timeRecord = TimeRecord.builder()
@@ -100,6 +106,11 @@ public class TimeService {
         if (timeRecord.getClockIn() == null) {
             throw new IllegalArgumentException("Cannot clock out without clock in");
         }
+
+        breakRepository.findByTimeRecordIdAndEndTimeIsNull(recordId).ifPresent(b -> {
+            b.setEndTime(LocalDateTime.now());
+            breakRepository.save(b);
+        });
 
         timeRecord.setClockOut(LocalDateTime.now());
         timeRecord.setComputedHours(calculateHours(timeRecord));
@@ -175,6 +186,11 @@ public class TimeService {
             timeRecord.setComputedHours(calculateHours(timeRecord));
         }
 
+        if (timeRecord.getClockIn() != null && timeRecord.getClockOut() != null
+                && timeRecord.getClockOut().isBefore(timeRecord.getClockIn())) {
+            throw new IllegalArgumentException("Clock-out cannot be before clock-in");
+        }
+
         timeRecord = timeRecordRepository.save(timeRecord);
         return entityToAdminDto(timeRecord);
     }
@@ -191,7 +207,11 @@ public class TimeService {
         long breakSeconds = 0;
         for (Break b : breaks) {
             if (b.getEndTime() != null) {
-                breakSeconds += Duration.between(b.getStartTime(), b.getEndTime()).toSeconds();
+                LocalDateTime bStart = b.getStartTime().isBefore(timeRecord.getClockIn()) ? timeRecord.getClockIn() : b.getStartTime();
+                LocalDateTime bEnd = b.getEndTime().isAfter(timeRecord.getClockOut()) ? timeRecord.getClockOut() : b.getEndTime();
+                if (bEnd.isAfter(bStart)) {
+                    breakSeconds += Duration.between(bStart, bEnd).toSeconds();
+                }
             }
         }
 

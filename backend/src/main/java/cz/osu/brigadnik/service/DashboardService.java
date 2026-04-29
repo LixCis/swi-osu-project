@@ -205,7 +205,7 @@ public class DashboardService {
         return result;
     }
 
-    private LocalDateTime computeSince(LiveWorkerStatus status, List<TimeRecord> records) {
+    public LocalDateTime computeSince(LiveWorkerStatus status, List<TimeRecord> records) {
         if (records.isEmpty()) return null;
         TimeRecord latest = records.get(records.size() - 1);
         if (status == LiveWorkerStatus.WORKING) return latest.getClockIn();
