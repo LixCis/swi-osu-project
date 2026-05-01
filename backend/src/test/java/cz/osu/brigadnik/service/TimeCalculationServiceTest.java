@@ -26,6 +26,7 @@ import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.List;
 
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
@@ -43,6 +44,12 @@ class TimeCalculationServiceTest {
 
     @Mock
     private RegistrationRepository registrationRepository;
+
+    @Mock
+    private SimpMessagingTemplate messagingTemplate;
+
+    @Mock
+    private DashboardService dashboardService;
 
     @InjectMocks
     private TimeService timeService;

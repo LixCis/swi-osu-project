@@ -23,6 +23,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Collections;
 
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
@@ -39,6 +40,12 @@ class ValidationTest {
 
     @Mock
     private RegistrationRepository registrationRepository;
+
+    @Mock
+    private SimpMessagingTemplate messagingTemplate;
+
+    @Mock
+    private DashboardService dashboardService;
 
     @InjectMocks
     private TimeService timeService;

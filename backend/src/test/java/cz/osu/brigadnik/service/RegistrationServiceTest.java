@@ -15,6 +15,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import cz.osu.brigadnik.repository.EventRepository;
+import cz.osu.brigadnik.repository.TimeRecordRepository;
+import cz.osu.brigadnik.repository.BreakRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -34,6 +37,15 @@ class RegistrationServiceTest {
 
     @Mock
     private PositionRepository positionRepository;
+
+    @Mock
+    private EventRepository eventRepository;
+
+    @Mock
+    private TimeRecordRepository timeRecordRepository;
+
+    @Mock
+    private BreakRepository breakRepository;
 
     @InjectMocks
     private RegistrationService registrationService;
