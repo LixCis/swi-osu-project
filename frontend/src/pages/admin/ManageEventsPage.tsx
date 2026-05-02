@@ -33,6 +33,8 @@ export function ManageEventsPage() {
   }, [state.search, state.dateFrom, state.dateTo])
 
   const loadEvents = async () => {
+    setExpandedEvent(null)
+    setPositions([])
     try {
       const params: Record<string, string> = {}
       if (state.search) params.search = state.search
@@ -177,6 +179,7 @@ export function ManageEventsPage() {
     setShowForm(false)
     setEditingId(null)
     setFormData({ name: '', description: '', location: '', startDate: '', endDate: '' })
+    setError(null)
   }
 
   const cancelPositionForm = () => {

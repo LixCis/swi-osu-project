@@ -17,12 +17,13 @@ export function MyRegistrationsPage() {
 
   useEffect(() => {
     loadRegistrations()
-  }, [state.status])
+  }, [state.status, state.search])
 
   const loadRegistrations = async () => {
     try {
       const params: Record<string, string> = {}
       if (state.status) params.status = state.status
+      if (state.search) params.search = state.search
       const response = await api.get('/registrations/my', { params })
       setRegistrations(response.data)
       setError(null)
@@ -69,8 +70,8 @@ export function MyRegistrationsPage() {
       )}
 
       <SearchFilter
-        search=""
-        onSearchChange={() => {}}
+        search={state.search}
+        onSearchChange={(v) => setField('search', v)}
         quickFilters={quickFilters}
         activeFilters={{ status: state.status }}
         onFilterToggle={(field, value) => setField(field, value)}

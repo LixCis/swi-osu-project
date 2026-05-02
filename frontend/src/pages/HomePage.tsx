@@ -16,10 +16,10 @@ export function HomePage() {
   }, [location.key])
 
   const load = async () => {
+    setError(null)
     try {
       const res = await api.get<Registration[]>('/registrations/my/upcoming')
       setUpcoming(res.data)
-      setError(null)
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load shifts')
     }

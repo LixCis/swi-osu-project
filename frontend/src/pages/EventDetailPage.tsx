@@ -81,6 +81,7 @@ export function EventDetailPage() {
       navigate('/my-registrations')
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to register')
+      await loadEventData()
     } finally {
       setRegisteringId(null)
     }
