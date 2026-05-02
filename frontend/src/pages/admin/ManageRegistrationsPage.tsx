@@ -420,7 +420,7 @@ export function ManageRegistrationsPage() {
       )}
 
       {conflicts && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setConflicts(null)}>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => { setConflicts(null); setSelectedIds(new Set()); }}>
           <div className="bg-white rounded-lg max-w-md w-full p-5" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-red-600 mb-2">Capacity exceeded</h3>
             <p className="text-sm text-slate-600 mb-3">
@@ -434,7 +434,7 @@ export function ManageRegistrationsPage() {
                 </li>
               ))}
             </ul>
-            <button onClick={() => setConflicts(null)} className="w-full py-2 bg-slate-800 text-white rounded font-semibold">
+            <button onClick={() => { setConflicts(null); setSelectedIds(new Set()); }} className="w-full py-2 bg-slate-800 text-white rounded font-semibold">
               OK
             </button>
           </div>

@@ -64,7 +64,7 @@ export function SearchFilter({
             )
           })}
           {(Object.values(activeFilters).some((v) => v) || search) && (
-            <button onClick={onClear} className="text-xs text-slate-500 ml-2">Clear filters</button>
+            <button onClick={() => onClear?.()} className="text-xs text-slate-500 ml-2">Clear filters</button>
           )}
           {resultCount !== undefined && (
             <span className="ml-auto text-xs text-slate-500">{resultCount} results</span>

@@ -162,10 +162,10 @@ export function EventDetailPage() {
                 ) : (
                   <button
                     onClick={() => handleRegister(position.id)}
-                    disabled={registeringId !== null || (position.approvedCount ?? 0) >= position.capacity}
+                    disabled={registeringId !== null}
                     className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:bg-gray-400 font-medium"
                   >
-                    {registeringId === position.id ? 'Registering...' : (position.approvedCount ?? 0) >= position.capacity ? 'Full' : 'Register'}
+                    {registeringId === position.id ? 'Registering...' : 'Register'}
                   </button>
                 )}
               </div>

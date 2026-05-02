@@ -73,7 +73,7 @@ export function LiveKanban({ workers, connected }: Props) {
   const [, setTick] = useState(0)
 
   useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), 60000)
+    const id = setInterval(() => setTick((t) => t + 1), 10000)
     return () => clearInterval(id)
   }, [])
 
