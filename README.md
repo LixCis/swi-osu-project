@@ -9,7 +9,7 @@ Worker time-tracking system for events. Admins create events and positions, work
 
 ## Setup
 
-Create a `.env` file in the project root (it is gitignored — never committed):
+Create a `.env` file in the project root (it is gitignored - never committed):
 
 ```env
 DB_URL=jdbc:mariadb://<host>:<port>/<database>
@@ -18,7 +18,7 @@ DB_PASSWORD=<password>
 JWT_SECRET=<random-secret-string>
 ```
 
-The application requires an existing MariaDB database. All tables are created automatically by Hibernate on first start (`ddl-auto=update`) — no migration scripts need to be run manually.
+The application requires an existing MariaDB database. All tables are created automatically by Hibernate on first start (`ddl-auto=update`) - no migration scripts need to be run manually.
 
 ## Run
 
