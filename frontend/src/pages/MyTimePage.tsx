@@ -119,11 +119,17 @@ export function MyTimePage() {
                                 <span className="font-medium text-orange-800 w-24">Break Start:</span>
                                 <span>{formatDateTime(b.startTime)}</span>
                               </div>
-                              {b.endTime && (
+                              {b.endTime ? (
                                 <div className="flex items-center gap-2 text-sm bg-orange-50 p-2 rounded">
                                   <span className="w-2 h-2 rounded-full bg-orange-400 inline-block"></span>
                                   <span className="font-medium text-orange-800 w-24">Break End:</span>
                                   <span>{formatDateTime(b.endTime)}</span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2 text-sm bg-orange-100 p-2 rounded">
+                                  <span className="w-2 h-2 rounded-full bg-orange-600 inline-block animate-pulse"></span>
+                                  <span className="font-medium text-orange-900 w-24">In progress</span>
+                                  <span className="text-orange-700 italic">(ongoing)</span>
                                 </div>
                               )}
                             </div>
