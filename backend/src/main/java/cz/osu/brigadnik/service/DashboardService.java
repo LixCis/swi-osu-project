@@ -184,13 +184,11 @@ public class DashboardService {
 
     public LiveWorkerStatus computeStatus(Registration registration, List<TimeRecord> records, BreakRepository breakRepo) {
         List<TimeRecord> forThisReg = records.stream()
-                .filter(t -> t.getRegistration() == null
-                        || (t.getRegistration() != null && t.getRegistration().getId() != null
-                            && t.getRegistration().getId().equals(registration.getId())))
+                .filter(t -> t.getRegistration() != null && t.getRegistration().getId().equals(registration.getId()))
                 .collect(Collectors.toList());
         if (forThisReg.isEmpty()) return LiveWorkerStatus.NOT_ARRIVED;
 
-        TimeRecord latest = forThisReg.get(forThisReg.size() - 1);
+        TimeRecord latest = forThisReg.stream().max(Comparator.comparing(TimeRecord::getClockIn)).orElse(forThisReg.get(0));
         if (latest.getClockOut() != null) return LiveWorkerStatus.FINISHED;
 
         List<Break> breaks = breakRepo.findByTimeRecordId(latest.getId());
@@ -217,7 +215,7 @@ public class DashboardService {
                     .sum();
 
             if (!records.isEmpty()) {
-                TimeRecord latest = records.get(records.size() - 1);
+                TimeRecord latest = records.stream().max(Comparator.comparing(TimeRecord::getClockIn)).orElse(records.get(0));
                 if (status == LiveWorkerStatus.WORKING || status == LiveWorkerStatus.ON_BREAK) {
                     completedBreakSeconds = computeCompletedBreakSeconds(latest);
                 } else if (status == LiveWorkerStatus.FINISHED) {
@@ -252,7 +250,7 @@ public class DashboardService {
 
     public LocalDateTime computeSince(LiveWorkerStatus status, List<TimeRecord> records) {
         if (records.isEmpty()) return null;
-        TimeRecord latest = records.get(records.size() - 1);
+        TimeRecord latest = records.stream().max(Comparator.comparing(TimeRecord::getClockIn)).orElse(records.get(0));
         if (status == LiveWorkerStatus.WORKING) return latest.getClockIn();
         if (status == LiveWorkerStatus.FINISHED) return latest.getClockOut();
         if (status == LiveWorkerStatus.ON_BREAK) {

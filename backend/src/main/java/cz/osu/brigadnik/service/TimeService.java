@@ -84,7 +84,7 @@ public class TimeService {
                 .sum();
 
         if (!records.isEmpty()) {
-            TimeRecord latest = records.get(records.size() - 1);
+            TimeRecord latest = records.stream().max(Comparator.comparing(TimeRecord::getClockIn)).orElse(records.get(0));
             if (status == LiveWorkerStatus.WORKING || status == LiveWorkerStatus.ON_BREAK) {
                 completedBreakSeconds = dashboardService.computeCompletedBreakSeconds(latest);
             } else if (status == LiveWorkerStatus.FINISHED) {
@@ -222,7 +222,7 @@ public class TimeService {
     @Transactional(readOnly = true)
     public List<TimeRecordDto> getMyTimeRecords(Long workerId) {
         return timeRecordRepository.findByWorkerId(workerId).stream()
-                .sorted((a, b) -> b.getId().compareTo(a.getId()))
+                .sorted((a, b) -> b.getClockIn().compareTo(a.getClockIn()))
                 .map(this::entityToDto)
                 .collect(Collectors.toList());
     }
