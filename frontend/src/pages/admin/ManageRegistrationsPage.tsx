@@ -5,7 +5,7 @@ import { EmptyState } from '../../components/EmptyState'
 import { SearchFilter } from '../../components/SearchFilter'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useSearchFilters } from '../../hooks/useSearchFilters'
-import { formatStatus, formatDate } from '../../utils/formatting'
+import { formatStatus, formatDate, formatDateOnly } from '../../utils/formatting'
 import { RegistrationStatus } from '../../types'
 import type { Event, BulkConflict } from '../../types'
 
@@ -276,7 +276,7 @@ export function ManageRegistrationsPage() {
         </label>
         <select
           value={selectedEventId || ''}
-          onChange={(e) => { setSelectedEventId(e.target.value); setSelectedIds(new Set()); }}
+          onChange={(e) => { setSelectedEventId(e.target.value); setSelectedIds(new Set()); setConflicts(null); }}
           className="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           {events.map((event) => (
@@ -391,7 +391,7 @@ export function ManageRegistrationsPage() {
                         <div className="text-xs text-gray-500">{reg.workerPhone}</div>
                       )}
                       {reg.workerDateOfBirth && (
-                        <div className="text-xs text-gray-500">{formatDate(reg.workerDateOfBirth)}</div>
+                        <div className="text-xs text-gray-500">{formatDateOnly(reg.workerDateOfBirth)}</div>
                       )}
                     </td>
                     <td className="px-6 py-4">{reg.positionName || 'Position'}</td>

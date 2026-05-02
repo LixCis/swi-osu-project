@@ -48,6 +48,7 @@ export function AdminDashboard() {
   useEffect(() => {
     if (selectedEventId) {
       setExpandedWorker(null)
+      setDashboardData(null)
       loadDashboardData()
     }
   }, [selectedEventId])

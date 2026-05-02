@@ -20,13 +20,13 @@ export function MyRegistrationsPage() {
   }, [state.status, state.search])
 
   const loadRegistrations = async () => {
+    setError(null)
     try {
       const params: Record<string, string> = {}
       if (state.status) params.status = state.status
       if (state.search) params.search = state.search
       const response = await api.get('/registrations/my', { params })
       setRegistrations(response.data)
-      setError(null)
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load registrations')
     } finally {

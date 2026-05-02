@@ -52,6 +52,7 @@ export function ManageEventsPage() {
   }
 
   const loadPositions = async (eventId: string) => {
+    setError(null)
     try {
       const response = await api.get(`/events/${eventId}/positions`)
       const sorted = [...response.data].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())

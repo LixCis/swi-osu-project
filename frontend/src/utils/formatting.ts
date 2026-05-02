@@ -29,6 +29,11 @@ export function formatDate(iso: string): string {
   return parseUtc(iso).toLocaleDateString('en-GB')
 }
 
+export function formatDateOnly(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('en-GB')
+}
+
 export function formatStatus(status: string): string {
   const map: Record<string, string> = {
     PENDING: 'Pending',
