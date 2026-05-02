@@ -16,6 +16,7 @@ import cz.osu.brigadnik.repository.RegistrationRepository;
 import cz.osu.brigadnik.repository.TimeRecordRepository;
 import cz.osu.brigadnik.repository.UserRepository;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,6 +49,24 @@ public class TimeService {
         this.registrationRepository = registrationRepository;
         this.messagingTemplate = messagingTemplate;
         this.dashboardService = dashboardService;
+    }
+
+    private void validateTimeWindow(Registration registration) {
+        LocalDateTime windowOpen = LocalDateTime.of(
+            registration.getPosition().getDate(),
+            registration.getPosition().getStartTime()
+        ).minusHours(3);
+
+        LocalDateTime windowClose = LocalDateTime.of(
+            registration.getPosition().getDate(),
+            registration.getPosition().getEndTime()
+        ).plusHours(3);
+
+        LocalDateTime now = LocalDateTime.now();
+
+        if (now.isBefore(windowOpen) || now.isAfter(windowClose)) {
+            throw new IllegalArgumentException("Clock in/out is outside the allowed time window");
+        }
     }
 
     private void broadcastLive(Registration registration) {
@@ -105,6 +124,8 @@ public class TimeService {
             throw new IllegalArgumentException("Registration is not approved");
         }
 
+        validateTimeWindow(registration);
+
         if (timeRecordRepository.findByWorkerIdAndRegistrationIdAndClockOutIsNull(workerId, registrationId).isPresent()) {
             throw new IllegalArgumentException("Already clocked in to this registration");
         }
@@ -135,6 +156,8 @@ public class TimeService {
         if (timeRecord.getClockIn() == null) {
             throw new IllegalArgumentException("Cannot clock out without clock in");
         }
+
+        validateTimeWindow(timeRecord.getRegistration());
 
         breakRepository.findByTimeRecordIdAndEndTimeIsNull(recordId).ifPresent(b -> {
             b.setEndTime(LocalDateTime.now());
@@ -311,5 +334,30 @@ public class TimeService {
                 .totalAmount(totalAmount)
                 .breaks(getBreakDtos(timeRecord.getId()))
                 .build();
+    }
+
+    @Scheduled(fixedRate = 60000)
+    public void autoCloseExpiredRecords() {
+        List<TimeRecord> openRecords = timeRecordRepository.findByClockOutIsNull();
+
+        for (TimeRecord record : openRecords) {
+            Registration registration = record.getRegistration();
+            LocalDateTime windowClose = LocalDateTime.of(
+                registration.getPosition().getDate(),
+                registration.getPosition().getEndTime()
+            ).plusHours(3);
+
+            if (LocalDateTime.now().isAfter(windowClose)) {
+                breakRepository.findByTimeRecordIdAndEndTimeIsNull(record.getId()).ifPresent(b -> {
+                    b.setEndTime(windowClose);
+                    breakRepository.save(b);
+                });
+
+                record.setClockOut(windowClose);
+                record.setComputedHours(calculateHours(record));
+                timeRecordRepository.save(record);
+                broadcastLive(registration);
+            }
+        }
     }
 }

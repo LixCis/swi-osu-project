@@ -8,6 +8,18 @@ interface Props {
   registration: Registration
 }
 
+function computeWindowStatus(positionDate?: string, positionStartTime?: string, positionEndTime?: string): 'before' | 'open' | 'after' {
+  if (!positionDate || !positionStartTime || !positionEndTime) return 'after'
+  const windowOpen = new Date(`${positionDate}T${positionStartTime}Z`)
+  windowOpen.setHours(windowOpen.getHours() - 3)
+  const windowClose = new Date(`${positionDate}T${positionEndTime}Z`)
+  windowClose.setHours(windowClose.getHours() + 3)
+  const now = new Date()
+  if (now.getTime() < windowOpen.getTime()) return 'before'
+  if (now.getTime() > windowClose.getTime()) return 'after'
+  return 'open'
+}
+
 function computeCountdown(positionDate?: string, positionStartTime?: string): string {
   if (!positionDate || !positionStartTime) return ''
   const start = new Date(`${positionDate}T${positionStartTime}Z`)
@@ -34,6 +46,7 @@ function formatElapsed(start: Date, now: Date): string {
 
 export function NextShiftCard({ registration }: Props) {
   const [countdown, setCountdown] = useState(computeCountdown(registration.positionDate, registration.positionStartTime))
+  const [windowStatus, setWindowStatus] = useState<'before' | 'open' | 'after'>(computeWindowStatus(registration.positionDate, registration.positionStartTime, registration.positionEndTime))
   const [activeRecord, setActiveRecord] = useState<TimeRecord | null>(null)
   const [, setTick] = useState(0)
   const navigate = useNavigate()
@@ -51,10 +64,11 @@ export function NextShiftCard({ registration }: Props) {
   useEffect(() => {
     const i = setInterval(() => {
       setCountdown(computeCountdown(registration.positionDate, registration.positionStartTime))
+      setWindowStatus(computeWindowStatus(registration.positionDate, registration.positionStartTime, registration.positionEndTime))
       setTick((t) => t + 1)
     }, 1000)
     return () => clearInterval(i)
-  }, [registration.positionDate, registration.positionStartTime])
+  }, [registration.positionDate, registration.positionStartTime, registration.positionEndTime])
 
   const handleClockIn = async () => {
     try {
@@ -90,9 +104,12 @@ export function NextShiftCard({ registration }: Props) {
       </div>
       <button
         onClick={handleClockIn}
-        className="mt-4 w-full py-3 bg-white text-emerald-700 rounded-lg font-bold text-base hover:bg-emerald-50 active:bg-emerald-100"
+        disabled={windowStatus !== 'open'}
+        className="mt-4 w-full py-3 bg-white text-emerald-700 rounded-lg font-bold text-base hover:bg-emerald-50 active:bg-emerald-100 disabled:bg-gray-400 disabled:text-gray-700 disabled:cursor-not-allowed"
       >
-        ⏱ Clock In
+        {windowStatus === 'before' && '⏱ Shift window not open yet'}
+        {windowStatus === 'after' && '⏱ Shift window has closed'}
+        {windowStatus === 'open' && '⏱ Clock In'}
       </button>
       {error && <div className="mt-2 text-xs bg-red-700/40 px-3 py-2 rounded">{error}</div>}
     </div>

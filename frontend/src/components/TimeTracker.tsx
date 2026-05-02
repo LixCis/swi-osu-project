@@ -7,6 +7,9 @@ import type { TimeRecord } from '../types'
 interface TimeTrackerProps {
   registrationId: string
   onStateChange?: () => void
+  positionDate?: string
+  positionStartTime?: string
+  positionEndTime?: string
 }
 
 function formatElapsed(seconds: number): string {
@@ -14,6 +17,18 @@ function formatElapsed(seconds: number): string {
   const m = Math.floor((seconds % 3600) / 60)
   const s = Math.floor(seconds % 60)
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
+
+function computeWindowStatus(positionDate?: string, positionStartTime?: string, positionEndTime?: string): 'before' | 'open' | 'after' {
+  if (!positionDate || !positionStartTime || !positionEndTime) return 'open'
+  const windowOpen = new Date(`${positionDate}T${positionStartTime}Z`)
+  windowOpen.setHours(windowOpen.getHours() - 3)
+  const windowClose = new Date(`${positionDate}T${positionEndTime}Z`)
+  windowClose.setHours(windowClose.getHours() + 3)
+  const now = new Date()
+  if (now.getTime() < windowOpen.getTime()) return 'before'
+  if (now.getTime() > windowClose.getTime()) return 'after'
+  return 'open'
 }
 
 function calcWorkSeconds(record: TimeRecord): number {
@@ -38,13 +53,14 @@ function calcBreakSeconds(record: TimeRecord): number {
   return Math.max(0, Math.floor((Date.now() - bStart) / 1000))
 }
 
-export function TimeTracker({ registrationId, onStateChange }: TimeTrackerProps) {
+export function TimeTracker({ registrationId, onStateChange, positionDate, positionStartTime, positionEndTime }: TimeTrackerProps) {
   const [record, setRecord] = useState<TimeRecord | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [workElapsed, setWorkElapsed] = useState(0)
   const [breakElapsed, setBreakElapsed] = useState(0)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [windowStatus, setWindowStatus] = useState<'before' | 'open' | 'after'>(computeWindowStatus(positionDate, positionStartTime, positionEndTime))
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const updateTimers = useCallback(() => {
@@ -68,15 +84,19 @@ export function TimeTracker({ registrationId, onStateChange }: TimeTrackerProps)
     const isActive = !!record.clockIn && !record.clockOut
 
     updateTimers()
+    setWindowStatus(computeWindowStatus(positionDate, positionStartTime, positionEndTime))
 
     if (isActive) {
-      intervalRef.current = setInterval(updateTimers, 1000)
+      intervalRef.current = setInterval(() => {
+        updateTimers()
+        setWindowStatus(computeWindowStatus(positionDate, positionStartTime, positionEndTime))
+      }, 1000)
     }
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
-  }, [record, updateTimers])
+  }, [record, updateTimers, positionDate, positionStartTime, positionEndTime])
 
   const loadState = async () => {
     try {
@@ -206,10 +226,14 @@ export function TimeTracker({ registrationId, onStateChange }: TimeTrackerProps)
         {(!record || isDone) && (
           <button
             onClick={handleClockIn}
-            disabled={loading}
+            disabled={loading || windowStatus !== 'open'}
             className="px-5 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 text-sm font-medium"
+            title={windowStatus === 'before' ? 'Shift window not open yet' : windowStatus === 'after' ? 'Shift window has closed' : ''}
           >
-            ▶ Start
+            {windowStatus === 'before' || windowStatus === 'after' ? '▶ ' : '▶ '}
+            {windowStatus === 'before' && 'Shift window not open yet'}
+            {windowStatus === 'after' && 'Shift window has closed'}
+            {windowStatus === 'open' && 'Start'}
           </button>
         )}
 

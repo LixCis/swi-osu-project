@@ -113,7 +113,13 @@ export function MyRegistrationsPage() {
 
                     {reg.status === RegistrationStatus.APPROVED && (
                       <div className="mt-6 pt-6 border-t">
-                        <TimeTracker registrationId={reg.id} onStateChange={loadRegistrations} />
+                        <TimeTracker
+                          registrationId={reg.id}
+                          onStateChange={loadRegistrations}
+                          positionDate={reg.positionDate}
+                          positionStartTime={reg.positionStartTime}
+                          positionEndTime={reg.positionEndTime}
+                        />
                       </div>
                     )}
                     {reg.status === RegistrationStatus.PENDING && (
