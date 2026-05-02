@@ -59,6 +59,7 @@ export function ManageRegistrationsPage() {
   }, [selectedEventId, state.search, state.status])
 
   const loadRegistrations = async () => {
+    setError(null)
     try {
       const params: Record<string, string> = {}
       if (state.search) params.search = state.search
@@ -193,6 +194,7 @@ export function ManageRegistrationsPage() {
         try {
           await api.post('/registrations/bulk-approve', { ids: pendingIds })
           await loadRegistrations()
+          setSelectedIds(new Set())
         } catch (e: any) {
           if (e.response?.status === 400 && e.response?.data?.conflicts) {
             setConflicts(e.response.data.conflicts)
@@ -250,7 +252,7 @@ export function ManageRegistrationsPage() {
         </label>
         <select
           value={selectedEventId || ''}
-          onChange={(e) => setSelectedEventId(e.target.value)}
+          onChange={(e) => { setSelectedEventId(e.target.value); setSelectedIds(new Set()); }}
           className="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           {events.map((event) => (
@@ -261,22 +263,20 @@ export function ManageRegistrationsPage() {
         </select>
       </div>
 
-      {registrations.length > 0 && (
-        <SearchFilter
-          searchPlaceholder="Search workers…"
-          search={state.search}
-          onSearchChange={(v) => setField('search', v)}
-          quickFilters={[
-            { key: 'pending', label: 'Pending', field: 'status', value: 'PENDING' },
-            { key: 'approved', label: 'Approved', field: 'status', value: 'APPROVED' },
-            { key: 'rejected', label: 'Rejected', field: 'status', value: 'REJECTED' }
-          ]}
-          activeFilters={{ status: state.status }}
-          onFilterToggle={(field, value) => setField(field, value)}
-          resultCount={registrations.length}
-          onClear={clear}
-        />
-      )}
+      <SearchFilter
+        searchPlaceholder="Search workers…"
+        search={state.search}
+        onSearchChange={(v) => setField('search', v)}
+        quickFilters={[
+          { key: 'pending', label: 'Pending', field: 'status', value: 'PENDING' },
+          { key: 'approved', label: 'Approved', field: 'status', value: 'APPROVED' },
+          { key: 'rejected', label: 'Rejected', field: 'status', value: 'REJECTED' }
+        ]}
+        activeFilters={{ status: state.status }}
+        onFilterToggle={(field, value) => setField(field, value)}
+        resultCount={registrations.length}
+        onClear={clear}
+      />
 
       {registrations.length > 0 && (() => {
         const selectedEvent = events.find((e) => e.id === selectedEventId)

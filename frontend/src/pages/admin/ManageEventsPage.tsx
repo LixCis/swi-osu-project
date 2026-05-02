@@ -76,6 +76,7 @@ export function ManageEventsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError(null)
     try {
       if (editingId) {
         await api.put(`/events/${editingId}`, formData)
@@ -117,6 +118,7 @@ export function ManageEventsPage() {
   const handlePositionSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!expandedEvent) return
+    setError(null)
     try {
       const payload = {
         name: positionForm.name,
@@ -193,7 +195,7 @@ export function ManageEventsPage() {
         open={confirmState?.open ?? false}
         title={confirmState?.title ?? ''}
         message={confirmState?.message ?? ''}
-        onConfirm={() => { confirmState?.action(); setConfirmState(null); }}
+        onConfirm={async () => { await confirmState?.action(); setConfirmState(null); }}
         onCancel={() => setConfirmState(null)}
         variant={confirmState?.variant}
       />

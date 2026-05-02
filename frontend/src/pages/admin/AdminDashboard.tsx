@@ -34,6 +34,7 @@ export function AdminDashboard() {
   }
 
   const loadDashboardData = async () => {
+    setError(null)
     try {
       const response = await api.get(`/dashboard/event/${selectedEventId}`)
       setDashboardData(response.data)
