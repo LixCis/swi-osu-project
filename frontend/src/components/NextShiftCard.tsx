@@ -9,7 +9,7 @@ interface Props {
 }
 
 function computeWindowStatus(positionDate?: string, positionStartTime?: string, positionEndTime?: string): 'before' | 'open' | 'after' {
-  if (!positionDate || !positionStartTime || !positionEndTime) return 'after'
+  if (!positionDate || !positionStartTime || !positionEndTime) return 'open'
   const windowOpen = new Date(`${positionDate}T${positionStartTime}Z`)
   windowOpen.setHours(windowOpen.getHours() - 3)
   const windowClose = new Date(`${positionDate}T${positionEndTime}Z`)
@@ -25,7 +25,7 @@ function computeCountdown(positionDate?: string, positionStartTime?: string): st
   const start = new Date(`${positionDate}T${positionStartTime}Z`)
   const now = new Date()
   const diffMs = start.getTime() - now.getTime()
-  if (diffMs <= 0) return 'Started'
+  if (diffMs <= 0) return 'In progress'
   const totalMin = Math.floor(diffMs / 60000)
   const days = Math.floor(totalMin / 1440)
   const hours = Math.floor((totalMin % 1440) / 60)
@@ -71,6 +71,7 @@ export function NextShiftCard({ registration }: Props) {
   }, [registration.positionDate, registration.positionStartTime, registration.positionEndTime])
 
   const handleClockIn = async () => {
+    setError(null)
     try {
       await api.post(`/time/clock-in?registrationId=${registration.id}`)
       navigate('/my-registrations')

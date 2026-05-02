@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import api from '../../api/axios'
 import { LoadingSpinner } from '../../components/LoadingSpinner'
 import { EmptyState } from '../../components/EmptyState'
@@ -135,6 +135,7 @@ export function ManageRegistrationsPage() {
             setConflicts(e.response.data.conflicts)
           } else {
             setError(e.response?.data?.message || 'Bulk approve failed')
+            setSelectedIds(new Set())
           }
         }
       }

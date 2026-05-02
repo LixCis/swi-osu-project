@@ -53,20 +53,35 @@ function calcBreakSeconds(record: TimeRecord): number {
   return Math.max(0, Math.floor((Date.now() - bStart) / 1000))
 }
 
+function calcTotalBreakSeconds(record: TimeRecord): number {
+  let total = 0
+  for (const b of record.breaks || []) {
+    if (b.endTime) {
+      const bStart = parseUtc(b.startTime).getTime()
+      const bEnd = parseUtc(b.endTime).getTime()
+      total += Math.floor((bEnd - bStart) / 1000)
+    }
+  }
+  return Math.max(0, total)
+}
+
 export function TimeTracker({ registrationId, onStateChange, positionDate, positionStartTime, positionEndTime }: TimeTrackerProps) {
   const [record, setRecord] = useState<TimeRecord | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [workElapsed, setWorkElapsed] = useState(0)
   const [breakElapsed, setBreakElapsed] = useState(0)
+  const [totalBreakSeconds, setTotalBreakSeconds] = useState(0)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [windowStatus, setWindowStatus] = useState<'before' | 'open' | 'after'>(computeWindowStatus(positionDate, positionStartTime, positionEndTime))
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const windowStatusIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const updateTimers = useCallback(() => {
     if (!record) return
     setWorkElapsed(calcWorkSeconds(record))
     setBreakElapsed(calcBreakSeconds(record))
+    setTotalBreakSeconds(calcTotalBreakSeconds(record))
   }, [record])
 
   useEffect(() => {
@@ -97,6 +112,21 @@ export function TimeTracker({ registrationId, onStateChange, positionDate, posit
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
   }, [record, updateTimers, positionDate, positionStartTime, positionEndTime])
+
+  useEffect(() => {
+    if (windowStatusIntervalRef.current) {
+      clearInterval(windowStatusIntervalRef.current)
+      windowStatusIntervalRef.current = null
+    }
+
+    windowStatusIntervalRef.current = setInterval(() => {
+      setWindowStatus(computeWindowStatus(positionDate, positionStartTime, positionEndTime))
+    }, 60000)
+
+    return () => {
+      if (windowStatusIntervalRef.current) clearInterval(windowStatusIntervalRef.current)
+    }
+  }, [positionDate, positionStartTime, positionEndTime])
 
   const loadState = async () => {
     try {
@@ -212,11 +242,11 @@ export function TimeTracker({ registrationId, onStateChange, positionDate, posit
           </p>
         </div>
 
-        {onBreak && (
+        {(onBreak || (isClocked && totalBreakSeconds > 0) || (isDone && totalBreakSeconds > 0)) && (
           <div>
             <p className="text-sm text-gray-500">Break Time</p>
             <p className="text-2xl font-mono font-bold text-orange-600">
-              {formatElapsed(breakElapsed)}
+              {formatElapsed(onBreak ? totalBreakSeconds + breakElapsed : totalBreakSeconds)}
             </p>
           </div>
         )}
@@ -230,7 +260,7 @@ export function TimeTracker({ registrationId, onStateChange, positionDate, posit
             className="px-5 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 text-sm font-medium"
             title={windowStatus === 'before' ? 'Shift window not open yet' : windowStatus === 'after' ? 'Shift window has closed' : ''}
           >
-            {windowStatus === 'before' || windowStatus === 'after' ? '▶ ' : '▶ '}
+            {windowStatus === 'open' && '▶ '}
             {windowStatus === 'before' && 'Shift window not open yet'}
             {windowStatus === 'after' && 'Shift window has closed'}
             {windowStatus === 'open' && 'Start'}

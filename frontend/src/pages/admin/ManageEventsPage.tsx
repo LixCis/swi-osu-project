@@ -95,6 +95,7 @@ export function ManageEventsPage() {
   }
 
   const handleEdit = (event: Event) => {
+    setError(null)
     setFormData(event)
     setEditingId(event.id)
     setShowForm(true)
@@ -145,6 +146,7 @@ export function ManageEventsPage() {
   }
 
   const handleEditPosition = (pos: Position) => {
+    setError(null)
     setPositionForm({
       name: pos.name,
       capacity: String(pos.capacity),
