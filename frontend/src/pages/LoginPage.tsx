@@ -28,11 +28,10 @@ export function LoginPage() {
   }
 
   const testAccounts = [
-    { email: 'admin@test.cz', password: 'heslo123', label: 'Jan Novak', role: 'ADMIN' },
-    { email: 'admin2@test.cz', password: 'heslo123', label: 'Marie Kralova', role: 'ADMIN' },
-    { email: 'petra@worker.cz', password: 'heslo123', label: 'Petra Svobodova', role: 'WORKER' },
-    { email: 'test2@test.cz', password: 'heslo123', label: 'Test User', role: 'WORKER' },
-    { email: 'karel@worker.cz', password: 'heslo123', label: 'Karel Dvorak', role: 'WORKER' },
+    { email: 'admin@brigadnik.cz', password: 'admin123', label: 'Admin Boss', role: 'ADMIN' },
+    { email: 'jana@brigadnik.cz', password: 'worker123', label: 'Jana Novakova', role: 'WORKER' },
+    { email: 'petr@brigadnik.cz', password: 'worker123', label: 'Petr Svoboda', role: 'WORKER' },
+    { email: 'lucie@brigadnik.cz', password: 'worker123', label: 'Lucie Kralova', role: 'WORKER' },
   ]
 
   const fillAccount = (account: typeof testAccounts[0]) => {

@@ -32,34 +32,37 @@ export function EventDetailPage() {
     try {
       const requests: Promise<any>[] = [
         api.get(`/events/${id}`),
-        api.get(`/events/${id}/positions`),
-        api.get(`/events/${id}/registrations`)
+        api.get(`/events/${id}/positions`)
       ]
-      if (!isAdmin) {
+      if (isAdmin) {
+        requests.push(api.get(`/events/${id}/registrations`))
+      } else {
         requests.push(api.get('/registrations/my'))
       }
       const results = await Promise.all(requests)
       setEvent(results[0].data)
 
+      const allRegistrations: Registration[] = results[2].data
       const userRegistrationMap = new Map(
-        isAdmin ? [] : results[3].data.map((reg: Registration) => [reg.positionId, reg])
+        isAdmin ? [] : allRegistrations.map((reg) => [reg.positionId, reg])
       )
 
-      const allRegistrations = results[2].data
-      const approvedCountByPosition = new Map()
-      allRegistrations.forEach((reg: Registration) => {
-        if (reg.status === RegistrationStatus.APPROVED) {
-          approvedCountByPosition.set(
-            reg.positionId,
-            (approvedCountByPosition.get(reg.positionId) || 0) + 1
-          )
-        }
-      })
+      const approvedCountByPosition = new Map<string, number>()
+      if (isAdmin) {
+        allRegistrations.forEach((reg) => {
+          if (reg.status === RegistrationStatus.APPROVED) {
+            approvedCountByPosition.set(
+              reg.positionId,
+              (approvedCountByPosition.get(reg.positionId) || 0) + 1
+            )
+          }
+        })
+      }
 
       const positionsWithReg = results[1].data.map((pos: Position) => ({
         ...pos,
         registration: userRegistrationMap.get(pos.id),
-        approvedCount: approvedCountByPosition.get(pos.id) || 0
+        approvedCount: approvedCountByPosition.get(pos.id)
       }))
 
       setPositions(positionsWithReg)
