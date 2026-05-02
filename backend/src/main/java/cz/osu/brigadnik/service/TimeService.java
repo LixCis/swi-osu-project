@@ -279,7 +279,7 @@ public class TimeService {
         }
 
         long workSeconds = totalSeconds - breakSeconds;
-        return BigDecimal.valueOf(workSeconds).divide(BigDecimal.valueOf(3600), 4, java.math.RoundingMode.HALF_UP);
+        return BigDecimal.valueOf(workSeconds).divide(BigDecimal.valueOf(3600), 6, java.math.RoundingMode.HALF_UP);
     }
 
     private List<BreakDto> getBreakDtos(Long timeRecordId) {

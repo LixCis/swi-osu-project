@@ -33,6 +33,7 @@ export function ManageRegistrationsPage() {
   const [conflicts, setConflicts] = useState<BulkConflict[] | null>(null)
   const [confirmState, setConfirmState] = useState<{ open: boolean; action: () => void | Promise<void>; title: string; message: string; variant?: 'danger' | 'warning' } | null>(null)
   const { state, setField, clear } = useSearchFilters({ search: '', status: '' })
+  const selectAllRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     loadEvents()
@@ -57,6 +58,12 @@ export function ManageRegistrationsPage() {
       loadRegistrations()
     }
   }, [selectedEventId, state.search, state.status])
+
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate = selectedIds.size > 0 && selectedIds.size < registrations.length
+    }
+  }, [selectedIds, registrations])
 
   const loadRegistrations = async () => {
     setError(null)
@@ -157,6 +164,7 @@ export function ManageRegistrationsPage() {
           setSelectedIds(new Set())
         } catch (e: any) {
           setError(e.response?.data?.message || 'Bulk reject failed')
+          setSelectedIds(new Set())
         }
       }
     })
@@ -177,6 +185,7 @@ export function ManageRegistrationsPage() {
           setSelectedIds(new Set())
         } catch (e: any) {
           setError(e.response?.data?.message || 'Bulk delete failed')
+          setSelectedIds(new Set())
         }
       }
     })
@@ -201,6 +210,7 @@ export function ManageRegistrationsPage() {
             setConflicts(e.response.data.conflicts)
           } else {
             setError(e.response?.data?.message || 'Approve all pending failed')
+            setSelectedIds(new Set())
           }
         }
       }
@@ -321,6 +331,7 @@ export function ManageRegistrationsPage() {
               <tr>
                 <th className="w-8 p-2">
                   <input
+                    ref={selectAllRef}
                     type="checkbox"
                     checked={registrations.length > 0 && selectedIds.size === registrations.length}
                     onChange={() => {
@@ -421,7 +432,7 @@ export function ManageRegistrationsPage() {
       )}
 
       {conflicts && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => { setConflicts(null); setSelectedIds(new Set()); }}>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => { setConflicts(null); }}>
           <div className="bg-white rounded-lg max-w-md w-full p-5" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-red-600 mb-2">Capacity exceeded</h3>
             <p className="text-sm text-slate-600 mb-3">
@@ -435,7 +446,7 @@ export function ManageRegistrationsPage() {
                 </li>
               ))}
             </ul>
-            <button onClick={() => { setConflicts(null); setSelectedIds(new Set()); }} className="w-full py-2 bg-slate-800 text-white rounded font-semibold">
+            <button onClick={() => { setConflicts(null); }} className="w-full py-2 bg-slate-800 text-white rounded font-semibold">
               OK
             </button>
           </div>

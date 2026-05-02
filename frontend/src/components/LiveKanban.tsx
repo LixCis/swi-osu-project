@@ -40,7 +40,7 @@ function elapsedWorkSince(since: string | null, completedBreakSeconds: number, p
 function timeLabel(w: LiveWorkerDto): string {
   if (w.status === LiveWorkerStatus.WORKING) return elapsedWorkSince(w.since, w.completedBreakSeconds, w.previousSessionSeconds)
   if (w.status === LiveWorkerStatus.ON_BREAK) return elapsedSince(w.since)
-  if (w.status === LiveWorkerStatus.FINISHED && w.workedHours != null) return formatHours(w.workedHours)
+  if (w.status === LiveWorkerStatus.FINISHED) return w.workedHours != null ? formatHours(w.workedHours) : '—'
   return ''
 }
 

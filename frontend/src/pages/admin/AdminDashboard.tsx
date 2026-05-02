@@ -196,9 +196,9 @@ export function AdminDashboard() {
                                     </div>
                                   ))}
                                   {tr.clockOut && (
-                                    <div className="flex items-center gap-2 bg-green-50 p-2 rounded">
+                                    <div className="flex items-center gap-2 bg-red-50 p-2 rounded">
                                       <span className="w-2 h-2 rounded-full bg-red-500 inline-block"></span>
-                                      <span className="font-medium text-green-800 w-24">Clock Out:</span>
+                                      <span className="font-medium text-red-800 w-24">Clock Out:</span>
                                       <span>{formatDateTime(tr.clockOut)}</span>
                                     </div>
                                   )}

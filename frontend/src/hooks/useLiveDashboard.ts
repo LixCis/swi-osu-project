@@ -42,6 +42,7 @@ export function useLiveDashboard(eventId: string | null, onUpdate?: () => void):
             })
             onUpdateRef.current?.()
           } catch (e) {
+            console.warn('Failed to parse live worker message:', e)
           }
         })
       },
