@@ -31,6 +31,7 @@ export function ManageRegistrationsPage() {
   const [error, setError] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [conflicts, setConflicts] = useState<BulkConflict[] | null>(null)
+  const [bulkLoading, setBulkLoading] = useState(false)
   const [confirmState, setConfirmState] = useState<{ open: boolean; action: () => void | Promise<void>; title: string; message: string; variant?: 'danger' | 'warning' } | null>(null)
   const { state, setField, clear } = useSearchFilters({ search: '', status: '' })
   const selectAllRef = useRef<HTMLInputElement>(null)
@@ -72,7 +73,8 @@ export function ManageRegistrationsPage() {
       if (state.search) params.search = state.search
       if (state.status) params.status = state.status
       const response = await api.get(`/events/${selectedEventId}/registrations`, { params })
-      setRegistrations(response.data)
+      const sorted = [...response.data].sort((a, b) => new Date(b.positionDate || '').getTime() - new Date(a.positionDate || '').getTime())
+      setRegistrations(sorted)
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load registrations')
     }
@@ -133,6 +135,7 @@ export function ManageRegistrationsPage() {
       title: 'Approve Registrations',
       message: `Approve ${ids.length} registration(s)?`,
       action: async () => {
+        setBulkLoading(true)
         try {
           await api.post('/registrations/bulk-approve', { ids })
           await loadRegistrations()
@@ -144,6 +147,8 @@ export function ManageRegistrationsPage() {
             setError(e.response?.data?.message || 'Bulk approve failed')
             setSelectedIds(new Set())
           }
+        } finally {
+          setBulkLoading(false)
         }
       }
     })
@@ -158,6 +163,7 @@ export function ManageRegistrationsPage() {
       message: `Reject ${ids.length} registration(s)?`,
       variant: 'warning',
       action: async () => {
+        setBulkLoading(true)
         try {
           await api.post('/registrations/bulk-reject', { ids })
           await loadRegistrations()
@@ -165,6 +171,8 @@ export function ManageRegistrationsPage() {
         } catch (e: any) {
           setError(e.response?.data?.message || 'Bulk reject failed')
           setSelectedIds(new Set())
+        } finally {
+          setBulkLoading(false)
         }
       }
     })
@@ -179,6 +187,7 @@ export function ManageRegistrationsPage() {
       message: `Delete ${ids.length} registration(s)? This action cannot be undone.`,
       variant: 'danger',
       action: async () => {
+        setBulkLoading(true)
         try {
           await api.post('/registrations/bulk-delete', { ids })
           await loadRegistrations()
@@ -186,6 +195,8 @@ export function ManageRegistrationsPage() {
         } catch (e: any) {
           setError(e.response?.data?.message || 'Bulk delete failed')
           setSelectedIds(new Set())
+        } finally {
+          setBulkLoading(false)
         }
       }
     })
@@ -308,9 +319,9 @@ export function ManageRegistrationsPage() {
             {selectedIds.size > 0 && (
               <div className="flex gap-2 items-center text-sm">
                 <span className="text-slate-600">{selectedIds.size} of {registrations.length} selected</span>
-                <button onClick={handleBulkApprove} className="px-2.5 py-1 bg-emerald-600 text-white rounded text-xs font-semibold">Approve</button>
-                <button onClick={handleBulkReject} className="px-2.5 py-1 bg-amber-500 text-white rounded text-xs font-semibold">Reject</button>
-                <button onClick={handleBulkDelete} className="px-2.5 py-1 bg-white border border-slate-300 rounded text-xs">Delete</button>
+                <button onClick={handleBulkApprove} disabled={bulkLoading} className="px-2.5 py-1 bg-emerald-600 text-white rounded text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed">Approve</button>
+                <button onClick={handleBulkReject} disabled={bulkLoading} className="px-2.5 py-1 bg-amber-500 text-white rounded text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed">Reject</button>
+                <button onClick={handleBulkDelete} disabled={bulkLoading} className="px-2.5 py-1 bg-white border border-slate-300 rounded text-xs disabled:opacity-50 disabled:cursor-not-allowed">Delete</button>
                 <button onClick={() => setSelectedIds(new Set())} className="ml-auto text-xs text-slate-500">Clear</button>
               </div>
             )}

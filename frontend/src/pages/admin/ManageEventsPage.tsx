@@ -42,7 +42,8 @@ export function ManageEventsPage() {
       if (state.dateFrom) params.dateFrom = state.dateFrom
       if (state.dateTo) params.dateTo = state.dateTo
       const response = await api.get('/events/my', { params })
-      setEvents(response.data)
+      const sorted = [...response.data].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
+      setEvents(sorted)
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load events')
     } finally {
@@ -53,7 +54,8 @@ export function ManageEventsPage() {
   const loadPositions = async (eventId: string) => {
     try {
       const response = await api.get(`/events/${eventId}/positions`)
-      setPositions(response.data)
+      const sorted = [...response.data].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      setPositions(sorted)
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load positions')
     }
@@ -80,6 +82,7 @@ export function ManageEventsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    setSubmitting(true)
     try {
       if (editingId) {
         await api.put(`/events/${editingId}`, formData)
@@ -92,6 +95,8 @@ export function ManageEventsPage() {
       loadEvents()
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to save event')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -123,6 +128,7 @@ export function ManageEventsPage() {
     e.preventDefault()
     if (!expandedEvent) return
     setError(null)
+    setSubmitting(true)
     try {
       const payload = {
         name: positionForm.name,
@@ -143,6 +149,8 @@ export function ManageEventsPage() {
       await loadPositions(expandedEvent)
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to save position')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -186,6 +194,7 @@ export function ManageEventsPage() {
   }
 
   const cancelPositionForm = () => {
+    setError(null)
     setShowPositionForm(false)
     setEditingPositionId(null)
     setPositionForm({ name: '', capacity: '', hourlyRate: '', date: '', startTime: '', endTime: '' })
@@ -298,7 +307,8 @@ export function ManageEventsPage() {
 
             <button
               type="submit"
-              className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 font-medium"
+              disabled={submitting}
+              className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {editingId ? 'Save Changes' : 'Create Event'}
             </button>
@@ -430,7 +440,8 @@ export function ManageEventsPage() {
                       </div>
                       <button
                         type="submit"
-                        className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 font-medium"
+                        disabled={submitting}
+                        className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {editingPositionId ? 'Save Changes' : 'Add Position'}
                       </button>

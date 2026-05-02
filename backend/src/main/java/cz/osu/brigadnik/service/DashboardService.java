@@ -56,9 +56,11 @@ public class DashboardService {
                 .flatMap(reg -> timeRecordRepository.findByRegistrationId(reg.getId()).stream())
                 .toList();
 
-        Set<Long> uniqueWorkers = allTimeRecords.stream()
-                .map(tr -> tr.getWorker().getId())
-                .collect(Collectors.toSet());
+        long totalWorkers = registrations.stream()
+                .filter(r -> r.getStatus() == RegistrationStatus.APPROVED)
+                .map(r -> r.getWorker().getId())
+                .distinct()
+                .count();
 
         BigDecimal totalHours = allTimeRecords.stream()
                 .map(TimeRecord::getComputedHours)
@@ -115,7 +117,7 @@ public class DashboardService {
         return DashboardDto.builder()
                 .eventId(event.getId())
                 .eventName(event.getName())
-                .totalWorkers(uniqueWorkers.size())
+                .totalWorkers((int) totalWorkers)
                 .totalHours(totalHours)
                 .totalCost(totalCost)
                 .workers(workers)

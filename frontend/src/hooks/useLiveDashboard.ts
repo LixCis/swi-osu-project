@@ -16,9 +16,13 @@ export function useLiveDashboard(eventId: string | null, onUpdate?: () => void):
   useEffect(() => { onUpdateRef.current = onUpdate }, [onUpdate])
 
   const setInitial = (initial: LiveWorkerDto[]) => {
-    const m = new Map<string, LiveWorkerDto>()
-    initial.forEach((w) => m.set(w.workerId, w))
-    setWorkers(m)
+    setWorkers((prev) => {
+      const m = new Map(prev)
+      initial.forEach((w) => {
+        if (!m.has(w.workerId)) m.set(w.workerId, w)
+      })
+      return m
+    })
   }
 
   useEffect(() => {

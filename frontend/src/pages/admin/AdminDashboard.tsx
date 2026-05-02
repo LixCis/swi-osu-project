@@ -170,7 +170,7 @@ export function AdminDashboard() {
                                 <div className="flex justify-between items-center mb-2">
                                   <span className="font-medium">{tr.positionName}</span>
                                   <span className="font-mono font-bold">
-                                    {formatHours(tr.computedHours)}
+                                    {tr.clockOut ? formatHours(tr.computedHours) : 'In progress'}
                                   </span>
                                 </div>
                                 <div className="space-y-1 text-sm">
