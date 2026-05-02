@@ -17,6 +17,7 @@ import cz.osu.brigadnik.repository.RegistrationSpecifications;
 import cz.osu.brigadnik.repository.TimeRecordRepository;
 import cz.osu.brigadnik.repository.UserRepository;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -72,13 +73,6 @@ public class RegistrationService {
     }
 
     @Transactional(readOnly = true)
-    public List<RegistrationDto> getMyRegistrations(Long workerId) {
-        return registrationRepository.findByWorkerId(workerId).stream()
-                .map(this::entityToDto)
-                .collect(Collectors.toList());
-    }
-
-    @Transactional(readOnly = true)
     public List<RegistrationDto> getUpcomingForWorker(Long workerId) {
         LocalDate today = LocalDate.now();
         return registrationRepository.findByWorkerId(workerId).stream()
@@ -89,20 +83,6 @@ public class RegistrationService {
                     LocalDateTime bStart = LocalDateTime.of(b.getPosition().getDate(), b.getPosition().getStartTime());
                     return aStart.compareTo(bStart);
                 })
-                .map(this::entityToDto)
-                .collect(Collectors.toList());
-    }
-
-    @Transactional(readOnly = true)
-    public List<RegistrationDto> getRegistrationsByEventId(Long eventId, Long userId) {
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new ResourceNotFoundException("Event not found"));
-
-        if (!event.getCreatedBy().getId().equals(userId)) {
-            throw new IllegalAccessError("Forbidden");
-        }
-
-        return registrationRepository.findByPositionEventId(eventId).stream()
                 .map(this::entityToDto)
                 .collect(Collectors.toList());
     }
@@ -225,7 +205,7 @@ public class RegistrationService {
                                                         String search, RegistrationStatus status,
                                                         LocalDate dateFrom, LocalDate dateTo) {
         Event event = eventRepository.findById(eventId).orElseThrow(() -> new ResourceNotFoundException("Event not found"));
-        if (!event.getCreatedBy().getId().equals(userId)) throw new IllegalAccessError("Forbidden");
+        if (!event.getCreatedBy().getId().equals(userId)) throw new AccessDeniedException("Forbidden");
         Specification<Registration> spec = Specification.where(RegistrationSpecifications.forEvent(eventId))
                 .and(RegistrationSpecifications.workerNameContains(search))
                 .and(RegistrationSpecifications.hasStatus(status))
@@ -237,7 +217,7 @@ public class RegistrationService {
     private void verifyAdminOwnership(Registration r, Long adminId) {
         Long ownerId = r.getPosition().getEvent().getCreatedBy().getId();
         if (!ownerId.equals(adminId)) {
-            throw new IllegalAccessError("Forbidden: not owner of event");
+            throw new AccessDeniedException("Forbidden: not owner of event");
         }
     }
 

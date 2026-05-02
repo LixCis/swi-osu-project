@@ -12,6 +12,7 @@ import cz.osu.brigadnik.repository.TimeRecordRepository;
 import cz.osu.brigadnik.repository.UserRepository;
 import cz.osu.brigadnik.repository.BreakRepository;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -90,7 +91,7 @@ public class EventService {
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found"));
 
         if (!event.getCreatedBy().getId().equals(userId)) {
-            throw new IllegalAccessError("Forbidden");
+            throw new AccessDeniedException("Forbidden");
         }
 
         if (dto.getStartDate().isAfter(dto.getEndDate())) {
@@ -112,7 +113,7 @@ public class EventService {
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found"));
 
         if (!event.getCreatedBy().getId().equals(userId)) {
-            throw new IllegalAccessError("Forbidden");
+            throw new AccessDeniedException("Forbidden");
         }
 
         List<cz.osu.brigadnik.entity.Position> positions = positionRepository.findByEventId(id);

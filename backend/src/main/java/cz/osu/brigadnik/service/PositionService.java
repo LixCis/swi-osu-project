@@ -9,6 +9,7 @@ import cz.osu.brigadnik.repository.EventRepository;
 import cz.osu.brigadnik.repository.PositionRepository;
 import cz.osu.brigadnik.repository.RegistrationRepository;
 import cz.osu.brigadnik.repository.TimeRecordRepository;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,7 +49,7 @@ public class PositionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found"));
 
         if (!event.getCreatedBy().getId().equals(userId)) {
-            throw new IllegalAccessError("Forbidden");
+            throw new AccessDeniedException("Forbidden");
         }
 
         if (dto.getStartTime().isAfter(dto.getEndTime()) || dto.getStartTime().equals(dto.getEndTime())) {
@@ -78,7 +79,7 @@ public class PositionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Position not found"));
 
         if (!position.getEvent().getCreatedBy().getId().equals(userId)) {
-            throw new IllegalAccessError("Forbidden");
+            throw new AccessDeniedException("Forbidden");
         }
 
         if (dto.getStartTime().isAfter(dto.getEndTime()) || dto.getStartTime().equals(dto.getEndTime())) {
@@ -106,7 +107,7 @@ public class PositionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Position not found"));
 
         if (!position.getEvent().getCreatedBy().getId().equals(userId)) {
-            throw new IllegalAccessError("Forbidden");
+            throw new AccessDeniedException("Forbidden");
         }
 
         List<cz.osu.brigadnik.entity.Registration> registrations = registrationRepository.findByPositionId(id);

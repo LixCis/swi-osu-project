@@ -120,9 +120,13 @@ public class TimeService {
         return entityToDto(timeRecord);
     }
 
-    public TimeRecordDto clockOut(Long recordId) {
+    public TimeRecordDto clockOut(Long recordId, Long workerId) {
         TimeRecord timeRecord = timeRecordRepository.findById(recordId)
                 .orElseThrow(() -> new ResourceNotFoundException("Time record not found"));
+
+        if (!timeRecord.getWorker().getId().equals(workerId)) {
+            throw new IllegalArgumentException("Not your record");
+        }
 
         if (timeRecord.getClockOut() != null) {
             throw new IllegalArgumentException("Already clocked out");
@@ -145,9 +149,13 @@ public class TimeService {
         return entityToDto(timeRecord);
     }
 
-    public TimeRecordDto startBreak(Long recordId) {
+    public TimeRecordDto startBreak(Long recordId, Long workerId) {
         TimeRecord timeRecord = timeRecordRepository.findById(recordId)
                 .orElseThrow(() -> new ResourceNotFoundException("Time record not found"));
+
+        if (!timeRecord.getWorker().getId().equals(workerId)) {
+            throw new IllegalArgumentException("Not your record");
+        }
 
         if (timeRecord.getClockIn() == null) {
             throw new IllegalArgumentException("Cannot start break without clock in");
@@ -172,14 +180,18 @@ public class TimeService {
         return entityToDto(timeRecord);
     }
 
-    public TimeRecordDto endBreak(Long recordId) {
+    public TimeRecordDto endBreak(Long recordId, Long workerId) {
         Break breakRecord = breakRepository.findByTimeRecordIdAndEndTimeIsNull(recordId)
                 .orElseThrow(() -> new ResourceNotFoundException("Open break not found"));
+
+        TimeRecord timeRecord = breakRecord.getTimeRecord();
+        if (!timeRecord.getWorker().getId().equals(workerId)) {
+            throw new IllegalArgumentException("Not your record");
+        }
 
         breakRecord.setEndTime(LocalDateTime.now());
         breakRepository.save(breakRecord);
 
-        TimeRecord timeRecord = breakRecord.getTimeRecord();
         broadcastLive(timeRecord.getRegistration());
         return entityToDto(timeRecord);
     }
