@@ -6,37 +6,59 @@ import cz.osu.brigadnik.entity.User;
 import cz.osu.brigadnik.exception.ResourceNotFoundException;
 import cz.osu.brigadnik.repository.EventRepository;
 import cz.osu.brigadnik.repository.EventSpecifications;
+import cz.osu.brigadnik.repository.PositionRepository;
+import cz.osu.brigadnik.repository.RegistrationRepository;
+import cz.osu.brigadnik.repository.TimeRecordRepository;
 import cz.osu.brigadnik.repository.UserRepository;
+import cz.osu.brigadnik.repository.BreakRepository;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@Transactional
 public class EventService {
 
     private final EventRepository eventRepository;
     private final UserRepository userRepository;
+    private final PositionRepository positionRepository;
+    private final RegistrationRepository registrationRepository;
+    private final TimeRecordRepository timeRecordRepository;
+    private final BreakRepository breakRepository;
 
-    public EventService(EventRepository eventRepository, UserRepository userRepository) {
+    public EventService(EventRepository eventRepository, UserRepository userRepository,
+                        PositionRepository positionRepository,
+                        RegistrationRepository registrationRepository,
+                        TimeRecordRepository timeRecordRepository,
+                        BreakRepository breakRepository) {
         this.eventRepository = eventRepository;
         this.userRepository = userRepository;
+        this.positionRepository = positionRepository;
+        this.registrationRepository = registrationRepository;
+        this.timeRecordRepository = timeRecordRepository;
+        this.breakRepository = breakRepository;
     }
 
+    @Transactional(readOnly = true)
     public List<EventDto> getAllEvents() {
         return eventRepository.findAll().stream()
                 .map(this::entityToDto)
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<EventDto> getMyEvents(Long userId) {
         return eventRepository.findByCreatedById(userId).stream()
                 .map(this::entityToDto)
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public EventDto getEventById(Long id) {
         Event event = eventRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found"));
@@ -46,6 +68,10 @@ public class EventService {
     public EventDto createEvent(EventDto dto, Long userId) {
         User createdBy = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (dto.getStartDate().isAfter(dto.getEndDate())) {
+            throw new IllegalArgumentException("Start date must be before or equal to end date");
+        }
 
         Event event = Event.builder()
                 .name(dto.getName())
@@ -64,6 +90,14 @@ public class EventService {
         Event event = eventRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found"));
 
+        if (!event.getCreatedBy().getId().equals(userId)) {
+            throw new AccessDeniedException("Forbidden");
+        }
+
+        if (dto.getStartDate().isAfter(dto.getEndDate())) {
+            throw new IllegalArgumentException("Start date must be before or equal to end date");
+        }
+
         event.setName(dto.getName());
         event.setDescription(dto.getDescription());
         event.setLocation(dto.getLocation());
@@ -74,13 +108,35 @@ public class EventService {
         return entityToDto(event);
     }
 
-    public void deleteEvent(Long id) {
-        if (!eventRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Event not found");
+    public void deleteEvent(Long id, Long userId) {
+        Event event = eventRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Event not found"));
+
+        if (!event.getCreatedBy().getId().equals(userId)) {
+            throw new AccessDeniedException("Forbidden");
+        }
+
+        List<cz.osu.brigadnik.entity.Position> positions = positionRepository.findByEventId(id);
+        for (cz.osu.brigadnik.entity.Position position : positions) {
+            List<cz.osu.brigadnik.entity.Registration> registrations = registrationRepository.findByPositionId(position.getId());
+            for (cz.osu.brigadnik.entity.Registration registration : registrations) {
+                deleteRegistrationCascade(registration.getId());
+            }
+            positionRepository.deleteById(position.getId());
         }
         eventRepository.deleteById(id);
     }
 
+    private void deleteRegistrationCascade(Long registrationId) {
+        List<cz.osu.brigadnik.entity.TimeRecord> timeRecords = timeRecordRepository.findByRegistrationId(registrationId);
+        for (cz.osu.brigadnik.entity.TimeRecord tr : timeRecords) {
+            breakRepository.deleteAll(breakRepository.findByTimeRecordId(tr.getId()));
+        }
+        timeRecordRepository.deleteAll(timeRecords);
+        registrationRepository.deleteById(registrationId);
+    }
+
+    @Transactional(readOnly = true)
     public List<EventDto> findEvents(String search, LocalDate from, LocalDate to) {
         Specification<Event> spec = Specification.where(EventSpecifications.nameOrLocationContains(search))
                 .and(EventSpecifications.startDateFrom(from))
@@ -88,6 +144,7 @@ public class EventService {
         return eventRepository.findAll(spec).stream().map(this::entityToDto).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<EventDto> findMyEvents(Long userId, String search, LocalDate from, LocalDate to) {
         Specification<Event> spec = Specification.where(EventSpecifications.createdBy(userId))
                 .and(EventSpecifications.nameOrLocationContains(search))

@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -20,4 +21,7 @@ public class LiveWorkerDto {
     private LocalDateTime since;
     private Long eventId;
     private Long registrationId;
+    private long completedBreakSeconds;
+    private long previousSessionSeconds;
+    private BigDecimal workedHours;
 }

@@ -15,6 +15,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import cz.osu.brigadnik.repository.EventRepository;
+import cz.osu.brigadnik.repository.TimeRecordRepository;
+import cz.osu.brigadnik.repository.BreakRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -34,6 +37,15 @@ class RegistrationServiceTest {
 
     @Mock
     private PositionRepository positionRepository;
+
+    @Mock
+    private EventRepository eventRepository;
+
+    @Mock
+    private TimeRecordRepository timeRecordRepository;
+
+    @Mock
+    private BreakRepository breakRepository;
 
     @InjectMocks
     private RegistrationService registrationService;
@@ -102,11 +114,27 @@ class RegistrationServiceTest {
                 .status(RegistrationStatus.APPROVED)
                 .build();
 
+        User worker3 = User.builder()
+                .id(4L)
+                .email("worker3@example.com")
+                .firstName("Worker")
+                .lastName("Three")
+                .role(Role.WORKER)
+                .build();
+
+        Registration reg3 = Registration.builder()
+                .id(3L)
+                .worker(worker3)
+                .position(position)
+                .status(RegistrationStatus.PENDING)
+                .build();
+
+        when(registrationRepository.findById(3L)).thenReturn(java.util.Optional.of(reg3));
         when(positionRepository.findById(1L)).thenReturn(java.util.Optional.of(position));
         when(registrationRepository.findByPositionId(1L)).thenReturn(Arrays.asList(reg1, reg2));
 
         assertThrows(IllegalArgumentException.class, () -> {
-            registrationService.approveRegistration(1L);
+            registrationService.approveRegistration(3L, admin.getId());
         });
     }
 }

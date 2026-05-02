@@ -27,6 +27,10 @@ public class RegistrationDto {
 
     private String workerEmail;
 
+    private String workerPhone;
+
+    private LocalDate workerDateOfBirth;
+
     private String positionName;
 
     private String eventName;

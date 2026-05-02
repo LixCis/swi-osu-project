@@ -33,10 +33,22 @@ export function AdminDashboard() {
     }
   }
 
-  const { workers: liveWorkers, connected, setInitial } = useLiveDashboard(selectedEventId)
+  const loadDashboardData = async () => {
+    setError(null)
+    try {
+      const response = await api.get(`/dashboard/event/${selectedEventId}`)
+      setDashboardData(response.data)
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to load dashboard data')
+    }
+  }
+
+  const { workers: liveWorkers, connected, setInitial } = useLiveDashboard(selectedEventId, loadDashboardData)
 
   useEffect(() => {
     if (selectedEventId) {
+      setExpandedWorker(null)
+      setDashboardData(null)
       loadDashboardData()
     }
   }, [selectedEventId])
@@ -46,16 +58,6 @@ export function AdminDashboard() {
       setInitial(dashboardData.liveWorkers)
     }
   }, [dashboardData])
-
-  const loadDashboardData = async () => {
-    try {
-      const response = await api.get(`/dashboard/event/${selectedEventId}`)
-      setDashboardData(response.data)
-      setExpandedWorker(null)
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load dashboard data')
-    }
-  }
 
   if (loading) return <LoadingSpinner message="Loading dashboard..." fullScreen />
 
@@ -169,7 +171,7 @@ export function AdminDashboard() {
                                 <div className="flex justify-between items-center mb-2">
                                   <span className="font-medium">{tr.positionName}</span>
                                   <span className="font-mono font-bold">
-                                    {formatHours(tr.computedHours)}
+                                    {tr.clockOut ? formatHours(tr.computedHours) : 'In progress'}
                                   </span>
                                 </div>
                                 <div className="space-y-1 text-sm">
@@ -195,9 +197,9 @@ export function AdminDashboard() {
                                     </div>
                                   ))}
                                   {tr.clockOut && (
-                                    <div className="flex items-center gap-2 bg-green-50 p-2 rounded">
+                                    <div className="flex items-center gap-2 bg-red-50 p-2 rounded">
                                       <span className="w-2 h-2 rounded-full bg-red-500 inline-block"></span>
-                                      <span className="font-medium text-green-800 w-24">Clock Out:</span>
+                                      <span className="font-medium text-red-800 w-24">Clock Out:</span>
                                       <span>{formatDateTime(tr.clockOut)}</span>
                                     </div>
                                   )}

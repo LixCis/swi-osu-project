@@ -17,11 +17,12 @@ import cz.osu.brigadnik.repository.RegistrationSpecifications;
 import cz.osu.brigadnik.repository.TimeRecordRepository;
 import cz.osu.brigadnik.repository.UserRepository;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -29,6 +30,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
+@Transactional
 public class RegistrationService {
 
     private final RegistrationRepository registrationRepository;
@@ -70,12 +72,7 @@ public class RegistrationService {
         return entityToDto(registration);
     }
 
-    public List<RegistrationDto> getMyRegistrations(Long workerId) {
-        return registrationRepository.findByWorkerId(workerId).stream()
-                .map(this::entityToDto)
-                .collect(Collectors.toList());
-    }
-
+    @Transactional(readOnly = true)
     public List<RegistrationDto> getUpcomingForWorker(Long workerId) {
         LocalDate today = LocalDate.now();
         return registrationRepository.findByWorkerId(workerId).stream()
@@ -90,23 +87,11 @@ public class RegistrationService {
                 .collect(Collectors.toList());
     }
 
-    public List<RegistrationDto> getRegistrationsByEventId(Long eventId, Long userId) {
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new ResourceNotFoundException("Event not found"));
-
-        if (!event.getCreatedBy().getId().equals(userId)) {
-            throw new IllegalAccessError("Forbidden");
-        }
-
-        return registrationRepository.findByPositionEventId(eventId).stream()
-                .map(this::entityToDto)
-                .collect(Collectors.toList());
-    }
-
-    public RegistrationDto approveRegistration(Long registrationId) {
+    public RegistrationDto approveRegistration(Long registrationId, Long adminId) {
         Registration registration = registrationRepository.findById(registrationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Registration not found"));
 
+        verifyAdminOwnership(registration, adminId);
         checkCapacity(registration.getPosition());
 
         registration.setStatus(RegistrationStatus.APPROVED);
@@ -114,19 +99,23 @@ public class RegistrationService {
         return entityToDto(registration);
     }
 
-    public RegistrationDto rejectRegistration(Long registrationId) {
+    public RegistrationDto rejectRegistration(Long registrationId, Long adminId) {
         Registration registration = registrationRepository.findById(registrationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Registration not found"));
+
+        verifyAdminOwnership(registration, adminId);
 
         registration.setStatus(RegistrationStatus.REJECTED);
         registration = registrationRepository.save(registration);
         return entityToDto(registration);
     }
 
-    public void deleteRegistration(Long registrationId) {
-        if (!registrationRepository.existsById(registrationId)) {
-            throw new ResourceNotFoundException("Registration not found");
-        }
+    public void deleteRegistration(Long registrationId, Long adminId) {
+        Registration registration = registrationRepository.findById(registrationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Registration not found"));
+
+        verifyAdminOwnership(registration, adminId);
+
         List<cz.osu.brigadnik.entity.TimeRecord> timeRecords = timeRecordRepository.findByRegistrationId(registrationId);
         for (cz.osu.brigadnik.entity.TimeRecord tr : timeRecords) {
             breakRepository.deleteAll(breakRepository.findByTimeRecordId(tr.getId()));
@@ -199,10 +188,11 @@ public class RegistrationService {
             verifyAdminOwnership(r, adminId);
         }
         for (Long id : ids) {
-            deleteRegistration(id);
+            deleteRegistration(id, adminId);
         }
     }
 
+    @Transactional(readOnly = true)
     public List<RegistrationDto> findMyRegistrations(Long workerId, RegistrationStatus status, Long eventId) {
         Specification<Registration> spec = Specification.where(RegistrationSpecifications.forWorker(workerId))
                 .and(RegistrationSpecifications.hasStatus(status))
@@ -210,11 +200,12 @@ public class RegistrationService {
         return registrationRepository.findAll(spec).stream().map(this::entityToDto).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<RegistrationDto> findEventRegistrations(Long eventId, Long userId,
                                                         String search, RegistrationStatus status,
                                                         LocalDate dateFrom, LocalDate dateTo) {
         Event event = eventRepository.findById(eventId).orElseThrow(() -> new ResourceNotFoundException("Event not found"));
-        if (!event.getCreatedBy().getId().equals(userId)) throw new IllegalAccessError("Forbidden");
+        if (!event.getCreatedBy().getId().equals(userId)) throw new AccessDeniedException("Forbidden");
         Specification<Registration> spec = Specification.where(RegistrationSpecifications.forEvent(eventId))
                 .and(RegistrationSpecifications.workerNameContains(search))
                 .and(RegistrationSpecifications.hasStatus(status))
@@ -226,7 +217,7 @@ public class RegistrationService {
     private void verifyAdminOwnership(Registration r, Long adminId) {
         Long ownerId = r.getPosition().getEvent().getCreatedBy().getId();
         if (!ownerId.equals(adminId)) {
-            throw new IllegalAccessError("Forbidden: not owner of event");
+            throw new AccessDeniedException("Forbidden: not owner of event");
         }
     }
 
@@ -248,6 +239,8 @@ public class RegistrationService {
                 .workerId(registration.getWorker().getId())
                 .workerName(registration.getWorker().getFirstName() + " " + registration.getWorker().getLastName())
                 .workerEmail(registration.getWorker().getEmail())
+                .workerPhone(registration.getWorker().getPhone())
+                .workerDateOfBirth(registration.getWorker().getDateOfBirth())
                 .positionName(registration.getPosition().getName())
                 .eventName(registration.getPosition().getEvent().getName())
                 .status(registration.getStatus())

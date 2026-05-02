@@ -57,7 +57,7 @@ export function RegisterPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email
+              E-mail
             </label>
             <input
               type="email"
@@ -151,7 +151,7 @@ export function RegisterPage() {
         <p className="mt-4 text-center text-gray-600">
           Already have an account?{' '}
           <Link to="/login" className="text-blue-600 hover:underline">
-            Login here
+            Login
           </Link>
         </p>
       </div>

@@ -16,13 +16,16 @@ import cz.osu.brigadnik.repository.EventRepository;
 import cz.osu.brigadnik.repository.RegistrationRepository;
 import cz.osu.brigadnik.repository.TimeRecordRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
+@Transactional(readOnly = true)
 public class DashboardService {
 
     private final EventRepository eventRepository;
@@ -53,9 +56,11 @@ public class DashboardService {
                 .flatMap(reg -> timeRecordRepository.findByRegistrationId(reg.getId()).stream())
                 .toList();
 
-        Set<Long> uniqueWorkers = allTimeRecords.stream()
-                .map(tr -> tr.getWorker().getId())
-                .collect(Collectors.toSet());
+        long totalWorkers = registrations.stream()
+                .filter(r -> r.getStatus() == RegistrationStatus.APPROVED)
+                .map(r -> r.getWorker().getId())
+                .distinct()
+                .count();
 
         BigDecimal totalHours = allTimeRecords.stream()
                 .map(TimeRecord::getComputedHours)
@@ -68,6 +73,15 @@ public class DashboardService {
                 .collect(Collectors.groupingBy(tr -> tr.getWorker().getId()));
 
         List<DashboardDto.WorkerSummaryDto> workers = byWorker.entrySet().stream()
+                .sorted((a, b) -> {
+                    LocalDateTime lastA = a.getValue().stream()
+                            .map(TimeRecord::getClockIn)
+                            .max(LocalDateTime::compareTo).orElse(LocalDateTime.MIN);
+                    LocalDateTime lastB = b.getValue().stream()
+                            .map(TimeRecord::getClockIn)
+                            .max(LocalDateTime::compareTo).orElse(LocalDateTime.MIN);
+                    return lastB.compareTo(lastA);
+                })
                 .map(entry -> {
                     List<TimeRecord> workerRecords = entry.getValue();
                     TimeRecord first = workerRecords.get(0);
@@ -91,6 +105,7 @@ public class DashboardService {
                     }
 
                     List<TimeRecordAdminDto> timeRecordDtos = workerRecords.stream()
+                            .sorted((a, b) -> b.getClockIn().compareTo(a.getClockIn()))
                             .map(this::toAdminDto)
                             .collect(Collectors.toList());
 
@@ -112,7 +127,7 @@ public class DashboardService {
         return DashboardDto.builder()
                 .eventId(event.getId())
                 .eventName(event.getName())
-                .totalWorkers(uniqueWorkers.size())
+                .totalWorkers((int) totalWorkers)
                 .totalHours(totalHours)
                 .totalCost(totalCost)
                 .workers(workers)
@@ -169,13 +184,11 @@ public class DashboardService {
 
     public LiveWorkerStatus computeStatus(Registration registration, List<TimeRecord> records, BreakRepository breakRepo) {
         List<TimeRecord> forThisReg = records.stream()
-                .filter(t -> t.getRegistration() == null
-                        || (t.getRegistration() != null && t.getRegistration().getId() != null
-                            && t.getRegistration().getId().equals(registration.getId())))
+                .filter(t -> t.getRegistration() != null && t.getRegistration().getId().equals(registration.getId()))
                 .collect(Collectors.toList());
         if (forThisReg.isEmpty()) return LiveWorkerStatus.NOT_ARRIVED;
 
-        TimeRecord latest = forThisReg.get(forThisReg.size() - 1);
+        TimeRecord latest = forThisReg.stream().max(Comparator.comparing(TimeRecord::getClockIn)).orElse(forThisReg.get(0));
         if (latest.getClockOut() != null) return LiveWorkerStatus.FINISHED;
 
         List<Break> breaks = breakRepo.findByTimeRecordId(latest.getId());
@@ -192,6 +205,26 @@ public class DashboardService {
             List<TimeRecord> records = timeRecordRepository.findByRegistrationId(r.getId());
             LiveWorkerStatus status = computeStatus(r, records, breakRepository);
             LocalDateTime since = computeSince(status, records);
+            long completedBreakSeconds = 0;
+            long previousSessionSeconds = 0;
+            BigDecimal workedHours = null;
+
+            previousSessionSeconds = records.stream()
+                    .filter(rec -> rec.getClockOut() != null && rec.getComputedHours() != null)
+                    .mapToLong(rec -> rec.getComputedHours().multiply(java.math.BigDecimal.valueOf(3600)).longValue())
+                    .sum();
+
+            if (!records.isEmpty()) {
+                TimeRecord latest = records.stream().max(Comparator.comparing(TimeRecord::getClockIn)).orElse(records.get(0));
+                if (status == LiveWorkerStatus.WORKING || status == LiveWorkerStatus.ON_BREAK) {
+                    completedBreakSeconds = computeCompletedBreakSeconds(latest);
+                } else if (status == LiveWorkerStatus.FINISHED) {
+                    workedHours = records.stream()
+                            .filter(rec -> rec.getClockOut() != null && rec.getComputedHours() != null)
+                            .map(TimeRecord::getComputedHours)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                }
+            }
             result.add(LiveWorkerDto.builder()
                     .workerId(r.getWorker().getId())
                     .workerName(r.getWorker().getFirstName() + " " + r.getWorker().getLastName())
@@ -200,14 +233,24 @@ public class DashboardService {
                     .since(since)
                     .eventId(eventId)
                     .registrationId(r.getId())
+                    .completedBreakSeconds(completedBreakSeconds)
+                    .previousSessionSeconds(previousSessionSeconds)
+                    .workedHours(workedHours)
                     .build());
         }
         return result;
     }
 
-    private LocalDateTime computeSince(LiveWorkerStatus status, List<TimeRecord> records) {
+    public long computeCompletedBreakSeconds(TimeRecord latest) {
+        return breakRepository.findByTimeRecordId(latest.getId()).stream()
+                .filter(b -> b.getEndTime() != null)
+                .mapToLong(b -> Duration.between(b.getStartTime(), b.getEndTime()).toSeconds())
+                .sum();
+    }
+
+    public LocalDateTime computeSince(LiveWorkerStatus status, List<TimeRecord> records) {
         if (records.isEmpty()) return null;
-        TimeRecord latest = records.get(records.size() - 1);
+        TimeRecord latest = records.stream().max(Comparator.comparing(TimeRecord::getClockIn)).orElse(records.get(0));
         if (status == LiveWorkerStatus.WORKING) return latest.getClockIn();
         if (status == LiveWorkerStatus.FINISHED) return latest.getClockOut();
         if (status == LiveWorkerStatus.ON_BREAK) {

@@ -6,7 +6,7 @@ import { EmptyState } from '../components/EmptyState'
 import { SearchFilter } from '../components/SearchFilter'
 import { useSearchFilters } from '../hooks/useSearchFilters'
 import { RegistrationStatus } from '../types'
-import { formatStatus } from '../utils/formatting'
+import { formatStatus, formatDate } from '../utils/formatting'
 import type { Registration } from '../types'
 
 export function MyRegistrationsPage() {
@@ -17,15 +17,16 @@ export function MyRegistrationsPage() {
 
   useEffect(() => {
     loadRegistrations()
-  }, [state.status])
+  }, [state.status, state.search])
 
   const loadRegistrations = async () => {
+    setError(null)
     try {
       const params: Record<string, string> = {}
       if (state.status) params.status = state.status
+      if (state.search) params.search = state.search
       const response = await api.get('/registrations/my', { params })
       setRegistrations(response.data)
-      setError(null)
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load registrations')
     } finally {
@@ -56,7 +57,23 @@ export function MyRegistrationsPage() {
     return acc
   }, {} as Record<string, Registration[]>)
 
-  const eventNames = Object.keys(groupedByEvent)
+  const eventNames = Object.keys(groupedByEvent).sort((a, b) => {
+    const aLatest = groupedByEvent[a].reduce((max, reg) => {
+      const date = new Date(reg.positionDate).getTime()
+      return date > max ? date : max
+    }, 0)
+    const bLatest = groupedByEvent[b].reduce((max, reg) => {
+      const date = new Date(reg.positionDate).getTime()
+      return date > max ? date : max
+    }, 0)
+    return bLatest - aLatest
+  })
+
+  Object.keys(groupedByEvent).forEach((eventName) => {
+    groupedByEvent[eventName].sort((a, b) => {
+      return new Date(b.positionDate).getTime() - new Date(a.positionDate).getTime()
+    })
+  })
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -69,8 +86,8 @@ export function MyRegistrationsPage() {
       )}
 
       <SearchFilter
-        search=""
-        onSearchChange={() => {}}
+        search={state.search}
+        onSearchChange={(v) => setField('search', v)}
         quickFilters={quickFilters}
         activeFilters={{ status: state.status }}
         onFilterToggle={(field, value) => setField(field, value)}
@@ -81,7 +98,7 @@ export function MyRegistrationsPage() {
       {registrations.length === 0 ? (
         <EmptyState
           title="No registrations yet"
-          message="Browse available events and sign up for positions."
+          message="Browse available events and register for positions."
           actionLabel="Browse Events"
           actionTo="/events"
         />
@@ -99,7 +116,7 @@ export function MyRegistrationsPage() {
                           {reg.positionName || 'Position'}
                         </p>
                         <p className="text-gray-600 mb-1">
-                          <strong>Date:</strong> {reg.positionDate}
+                          <strong>Date:</strong> {formatDate(reg.positionDate || '')}
                         </p>
                         <p className="text-gray-600">
                           <strong>Time:</strong> {reg.positionStartTime} – {reg.positionEndTime}
@@ -112,12 +129,18 @@ export function MyRegistrationsPage() {
 
                     {reg.status === RegistrationStatus.APPROVED && (
                       <div className="mt-6 pt-6 border-t">
-                        <TimeTracker registrationId={reg.id} onStateChange={loadRegistrations} />
+                        <TimeTracker
+                          registrationId={reg.id}
+                          onStateChange={loadRegistrations}
+                          positionDate={reg.positionDate}
+                          positionStartTime={reg.positionStartTime}
+                          positionEndTime={reg.positionEndTime}
+                        />
                       </div>
                     )}
                     {reg.status === RegistrationStatus.PENDING && (
                       <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
-                        Waiting for admin approval. You'll be able to clock in once approved.
+                        Waiting for admin approval. Once approved, you can start tracking time.
                       </div>
                     )}
                   </div>

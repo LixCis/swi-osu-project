@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import api from '../../api/axios'
 import { LoadingSpinner } from '../../components/LoadingSpinner'
 import { SearchFilter } from '../../components/SearchFilter'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useSearchFilters } from '../../hooks/useSearchFilters'
 import type { Event, Position } from '../../types'
 
@@ -25,19 +26,24 @@ export function ManageEventsPage() {
   const [showPositionForm, setShowPositionForm] = useState(false)
   const [editingPositionId, setEditingPositionId] = useState<string | null>(null)
   const [positionForm, setPositionForm] = useState({ name: '', capacity: '', hourlyRate: '', date: '', startTime: '', endTime: '' })
+  const [confirmState, setConfirmState] = useState<{ open: boolean; action: () => void; title: string; message: string; variant?: 'danger' } | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     loadEvents()
   }, [state.search, state.dateFrom, state.dateTo])
 
   const loadEvents = async () => {
+    setExpandedEvent(null)
+    setPositions([])
     try {
       const params: Record<string, string> = {}
       if (state.search) params.search = state.search
       if (state.dateFrom) params.dateFrom = state.dateFrom
       if (state.dateTo) params.dateTo = state.dateTo
       const response = await api.get('/events/my', { params })
-      setEvents(response.data)
+      const sorted = [...response.data].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
+      setEvents(sorted)
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load events')
     } finally {
@@ -46,9 +52,11 @@ export function ManageEventsPage() {
   }
 
   const loadPositions = async (eventId: string) => {
+    setError(null)
     try {
       const response = await api.get(`/events/${eventId}/positions`)
-      setPositions(response.data)
+      const sorted = [...response.data].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      setPositions(sorted)
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load positions')
     }
@@ -74,6 +82,8 @@ export function ManageEventsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError(null)
+    setSubmitting(true)
     try {
       if (editingId) {
         await api.put(`/events/${editingId}`, formData)
@@ -86,28 +96,44 @@ export function ManageEventsPage() {
       loadEvents()
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to save event')
+    } finally {
+      setSubmitting(false)
     }
   }
 
   const handleEdit = (event: Event) => {
+    setError(null)
     setFormData(event)
     setEditingId(event.id)
     setShowForm(true)
   }
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Delete event "${name}"? This cannot be undone.`)) return
-    try {
-      await api.delete(`/events/${id}`)
-      loadEvents()
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to delete event')
-    }
+    setConfirmState({
+      open: true,
+      title: 'Delete Event',
+      message: `Delete event "${name}"? This cannot be undone.`,
+      variant: 'danger',
+      action: async () => {
+        try {
+          await api.delete(`/events/${id}`)
+          loadEvents()
+        } catch (err: any) {
+          setError(err.response?.data?.message || 'Failed to delete event')
+        }
+      }
+    })
   }
 
   const handlePositionSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!expandedEvent) return
+    setError(null)
+    if (positionForm.startTime && positionForm.endTime && positionForm.endTime <= positionForm.startTime) {
+      setError('End time must be after start time')
+      return
+    }
+    setSubmitting(true)
     try {
       const payload = {
         name: positionForm.name,
@@ -128,10 +154,13 @@ export function ManageEventsPage() {
       await loadPositions(expandedEvent)
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to save position')
+    } finally {
+      setSubmitting(false)
     }
   }
 
   const handleEditPosition = (pos: Position) => {
+    setError(null)
     setPositionForm({
       name: pos.name,
       capacity: String(pos.capacity),
@@ -145,23 +174,32 @@ export function ManageEventsPage() {
   }
 
   const handleDeletePosition = async (posId: string, name: string) => {
-    if (!confirm(`Delete position "${name}"?`)) return
-    if (!expandedEvent) return
-    try {
-      await api.delete(`/positions/${posId}`)
-      await loadPositions(expandedEvent)
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to delete position')
-    }
+    setConfirmState({
+      open: true,
+      title: 'Delete Position',
+      message: `Delete position "${name}"?`,
+      variant: 'danger',
+      action: async () => {
+        if (!expandedEvent) return
+        try {
+          await api.delete(`/positions/${posId}`)
+          await loadPositions(expandedEvent)
+        } catch (err: any) {
+          setError(err.response?.data?.message || 'Failed to delete position')
+        }
+      }
+    })
   }
 
   const cancelEventForm = () => {
     setShowForm(false)
     setEditingId(null)
     setFormData({ name: '', description: '', location: '', startDate: '', endDate: '' })
+    setError(null)
   }
 
   const cancelPositionForm = () => {
+    setError(null)
     setShowPositionForm(false)
     setEditingPositionId(null)
     setPositionForm({ name: '', capacity: '', hourlyRate: '', date: '', startTime: '', endTime: '' })
@@ -173,6 +211,14 @@ export function ManageEventsPage() {
 
   return (
     <div className="max-w-6xl mx-auto">
+      <ConfirmDialog
+        open={confirmState?.open ?? false}
+        title={confirmState?.title ?? ''}
+        message={confirmState?.message ?? ''}
+        onConfirm={async () => { await confirmState?.action(); setConfirmState(null); }}
+        onCancel={() => setConfirmState(null)}
+        variant={confirmState?.variant}
+      />
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-4xl font-bold">Manage Events</h1>
         <button
@@ -190,7 +236,7 @@ export function ManageEventsPage() {
       )}
 
       <SearchFilter
-        searchPlaceholder="Hledat akci…"
+        searchPlaceholder="Search events…"
         search={state.search}
         onSearchChange={(v) => setField('search', v)}
         resultCount={events.length}
@@ -266,7 +312,8 @@ export function ManageEventsPage() {
 
             <button
               type="submit"
-              className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 font-medium"
+              disabled={submitting}
+              className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {editingId ? 'Save Changes' : 'Create Event'}
             </button>
@@ -398,7 +445,8 @@ export function ManageEventsPage() {
                       </div>
                       <button
                         type="submit"
-                        className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 font-medium"
+                        disabled={submitting}
+                        className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {editingPositionId ? 'Save Changes' : 'Add Position'}
                       </button>

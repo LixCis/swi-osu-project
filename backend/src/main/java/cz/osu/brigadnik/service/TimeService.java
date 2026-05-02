@@ -16,15 +16,19 @@ import cz.osu.brigadnik.repository.RegistrationRepository;
 import cz.osu.brigadnik.repository.TimeRecordRepository;
 import cz.osu.brigadnik.repository.UserRepository;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@Transactional
 public class TimeService {
 
     private final TimeRecordRepository timeRecordRepository;
@@ -48,17 +52,60 @@ public class TimeService {
         this.dashboardService = dashboardService;
     }
 
+    private void validateTimeWindow(Registration registration) {
+        LocalDateTime windowOpen = LocalDateTime.of(
+            registration.getPosition().getDate(),
+            registration.getPosition().getStartTime()
+        ).minusHours(3);
+
+        LocalDateTime windowClose = LocalDateTime.of(
+            registration.getPosition().getDate(),
+            registration.getPosition().getEndTime()
+        ).plusHours(3);
+
+        LocalDateTime now = LocalDateTime.now();
+
+        if (now.isBefore(windowOpen) || now.isAfter(windowClose)) {
+            throw new IllegalArgumentException("Clock in/out is outside the allowed time window");
+        }
+    }
+
     private void broadcastLive(Registration registration) {
         Long eventId = registration.getPosition().getEvent().getId();
         List<TimeRecord> records = timeRecordRepository.findByRegistrationId(registration.getId());
         LiveWorkerStatus status = dashboardService.computeStatus(registration, records, breakRepository);
+        LocalDateTime since = dashboardService.computeSince(status, records);
+        long completedBreakSeconds = 0;
+        long previousSessionSeconds = 0;
+        BigDecimal workedHours = null;
+
+        previousSessionSeconds = records.stream()
+                .filter(rec -> rec.getClockOut() != null && rec.getComputedHours() != null)
+                .mapToLong(rec -> rec.getComputedHours().multiply(java.math.BigDecimal.valueOf(3600)).longValue())
+                .sum();
+
+        if (!records.isEmpty()) {
+            TimeRecord latest = records.stream().max(Comparator.comparing(TimeRecord::getClockIn)).orElse(records.get(0));
+            if (status == LiveWorkerStatus.WORKING || status == LiveWorkerStatus.ON_BREAK) {
+                completedBreakSeconds = dashboardService.computeCompletedBreakSeconds(latest);
+            } else if (status == LiveWorkerStatus.FINISHED) {
+                workedHours = records.stream()
+                        .filter(rec -> rec.getClockOut() != null && rec.getComputedHours() != null)
+                        .map(TimeRecord::getComputedHours)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+            }
+        }
         LiveWorkerDto dto = LiveWorkerDto.builder()
                 .workerId(registration.getWorker().getId())
                 .workerName(registration.getWorker().getFirstName() + " " + registration.getWorker().getLastName())
                 .positionName(registration.getPosition().getName())
                 .status(status)
+                .since(since)
                 .eventId(eventId)
                 .registrationId(registration.getId())
+                .completedBreakSeconds(completedBreakSeconds)
+                .previousSessionSeconds(previousSessionSeconds)
+                .workedHours(workedHours)
                 .build();
         messagingTemplate.convertAndSend("/topic/event/" + eventId + "/live", dto);
     }
@@ -78,6 +125,12 @@ public class TimeService {
             throw new IllegalArgumentException("Registration is not approved");
         }
 
+        validateTimeWindow(registration);
+
+        if (timeRecordRepository.findByWorkerIdAndRegistrationIdAndClockOutIsNull(workerId, registrationId).isPresent()) {
+            throw new IllegalArgumentException("Already clocked in to this registration");
+        }
+
         TimeRecord timeRecord = TimeRecord.builder()
                 .worker(worker)
                 .registration(registration)
@@ -89,9 +142,13 @@ public class TimeService {
         return entityToDto(timeRecord);
     }
 
-    public TimeRecordDto clockOut(Long recordId) {
+    public TimeRecordDto clockOut(Long recordId, Long workerId) {
         TimeRecord timeRecord = timeRecordRepository.findById(recordId)
                 .orElseThrow(() -> new ResourceNotFoundException("Time record not found"));
+
+        if (!timeRecord.getWorker().getId().equals(workerId)) {
+            throw new IllegalArgumentException("Not your record");
+        }
 
         if (timeRecord.getClockOut() != null) {
             throw new IllegalArgumentException("Already clocked out");
@@ -101,6 +158,13 @@ public class TimeService {
             throw new IllegalArgumentException("Cannot clock out without clock in");
         }
 
+        validateTimeWindow(timeRecord.getRegistration());
+
+        breakRepository.findByTimeRecordIdAndEndTimeIsNull(recordId).ifPresent(b -> {
+            b.setEndTime(LocalDateTime.now());
+            breakRepository.save(b);
+        });
+
         timeRecord.setClockOut(LocalDateTime.now());
         timeRecord.setComputedHours(calculateHours(timeRecord));
 
@@ -109,9 +173,13 @@ public class TimeService {
         return entityToDto(timeRecord);
     }
 
-    public TimeRecordDto startBreak(Long recordId) {
+    public TimeRecordDto startBreak(Long recordId, Long workerId) {
         TimeRecord timeRecord = timeRecordRepository.findById(recordId)
                 .orElseThrow(() -> new ResourceNotFoundException("Time record not found"));
+
+        if (!timeRecord.getWorker().getId().equals(workerId)) {
+            throw new IllegalArgumentException("Not your record");
+        }
 
         if (timeRecord.getClockIn() == null) {
             throw new IllegalArgumentException("Cannot start break without clock in");
@@ -136,24 +204,31 @@ public class TimeService {
         return entityToDto(timeRecord);
     }
 
-    public TimeRecordDto endBreak(Long recordId) {
+    public TimeRecordDto endBreak(Long recordId, Long workerId) {
         Break breakRecord = breakRepository.findByTimeRecordIdAndEndTimeIsNull(recordId)
                 .orElseThrow(() -> new ResourceNotFoundException("Open break not found"));
+
+        TimeRecord timeRecord = breakRecord.getTimeRecord();
+        if (!timeRecord.getWorker().getId().equals(workerId)) {
+            throw new IllegalArgumentException("Not your record");
+        }
 
         breakRecord.setEndTime(LocalDateTime.now());
         breakRepository.save(breakRecord);
 
-        TimeRecord timeRecord = breakRecord.getTimeRecord();
         broadcastLive(timeRecord.getRegistration());
         return entityToDto(timeRecord);
     }
 
+    @Transactional(readOnly = true)
     public List<TimeRecordDto> getMyTimeRecords(Long workerId) {
         return timeRecordRepository.findByWorkerId(workerId).stream()
+                .sorted((a, b) -> b.getClockIn().compareTo(a.getClockIn()))
                 .map(this::entityToDto)
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<TimeRecordAdminDto> getEventTimeRecords(Long eventId) {
         List<Registration> registrations = registrationRepository.findByPositionEventId(eventId);
         return registrations.stream()
@@ -175,6 +250,11 @@ public class TimeService {
             timeRecord.setComputedHours(calculateHours(timeRecord));
         }
 
+        if (timeRecord.getClockIn() != null && timeRecord.getClockOut() != null
+                && timeRecord.getClockOut().isBefore(timeRecord.getClockIn())) {
+            throw new IllegalArgumentException("Clock-out cannot be before clock-in");
+        }
+
         timeRecord = timeRecordRepository.save(timeRecord);
         return entityToAdminDto(timeRecord);
     }
@@ -191,12 +271,16 @@ public class TimeService {
         long breakSeconds = 0;
         for (Break b : breaks) {
             if (b.getEndTime() != null) {
-                breakSeconds += Duration.between(b.getStartTime(), b.getEndTime()).toSeconds();
+                LocalDateTime bStart = b.getStartTime().isBefore(timeRecord.getClockIn()) ? timeRecord.getClockIn() : b.getStartTime();
+                LocalDateTime bEnd = b.getEndTime().isAfter(timeRecord.getClockOut()) ? timeRecord.getClockOut() : b.getEndTime();
+                if (bEnd.isAfter(bStart)) {
+                    breakSeconds += Duration.between(bStart, bEnd).toSeconds();
+                }
             }
         }
 
         long workSeconds = totalSeconds - breakSeconds;
-        return BigDecimal.valueOf(workSeconds).divide(BigDecimal.valueOf(3600), 4, java.math.RoundingMode.HALF_UP);
+        return BigDecimal.valueOf(workSeconds).divide(BigDecimal.valueOf(3600), 6, java.math.RoundingMode.HALF_UP);
     }
 
     private List<BreakDto> getBreakDtos(Long timeRecordId) {
@@ -251,5 +335,30 @@ public class TimeService {
                 .totalAmount(totalAmount)
                 .breaks(getBreakDtos(timeRecord.getId()))
                 .build();
+    }
+
+    @Scheduled(fixedRate = 60000)
+    public void autoCloseExpiredRecords() {
+        List<TimeRecord> openRecords = timeRecordRepository.findByClockOutIsNull();
+
+        for (TimeRecord record : openRecords) {
+            Registration registration = record.getRegistration();
+            LocalDateTime windowClose = LocalDateTime.of(
+                registration.getPosition().getDate(),
+                registration.getPosition().getEndTime()
+            ).plusHours(3);
+
+            if (LocalDateTime.now().isAfter(windowClose)) {
+                breakRepository.findByTimeRecordIdAndEndTimeIsNull(record.getId()).ifPresent(b -> {
+                    b.setEndTime(windowClose);
+                    breakRepository.save(b);
+                });
+
+                record.setClockOut(windowClose);
+                record.setComputedHours(calculateHours(record));
+                timeRecordRepository.save(record);
+                broadcastLive(registration);
+            }
+        }
     }
 }

@@ -32,19 +32,22 @@ public class TimeController {
 
     @PostMapping("/clock-out")
     public ResponseEntity<TimeRecordDto> clockOut(@RequestParam Long recordId) {
-        TimeRecordDto timeRecord = timeService.clockOut(recordId);
+        Long workerId = extractUserIdFromContext();
+        TimeRecordDto timeRecord = timeService.clockOut(recordId, workerId);
         return ResponseEntity.ok(timeRecord);
     }
 
     @PostMapping("/break-start")
     public ResponseEntity<TimeRecordDto> startBreak(@RequestParam Long recordId) {
-        TimeRecordDto timeRecord = timeService.startBreak(recordId);
+        Long workerId = extractUserIdFromContext();
+        TimeRecordDto timeRecord = timeService.startBreak(recordId, workerId);
         return ResponseEntity.status(HttpStatus.CREATED).body(timeRecord);
     }
 
     @PostMapping("/break-end")
     public ResponseEntity<TimeRecordDto> endBreak(@RequestParam Long recordId) {
-        TimeRecordDto timeRecord = timeService.endBreak(recordId);
+        Long workerId = extractUserIdFromContext();
+        TimeRecordDto timeRecord = timeService.endBreak(recordId, workerId);
         return ResponseEntity.ok(timeRecord);
     }
 

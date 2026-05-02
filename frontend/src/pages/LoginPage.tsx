@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 export function LoginPage() {
@@ -9,6 +9,7 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false)
   const { login } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -17,7 +18,8 @@ export function LoginPage() {
 
     try {
       await login(email, password)
-      navigate('/')
+      const from = (location.state as any)?.from?.pathname || '/'
+      navigate(from)
     } catch (err: any) {
       setError(err.response?.data?.message || 'Login failed')
     } finally {
@@ -26,11 +28,10 @@ export function LoginPage() {
   }
 
   const testAccounts = [
-    { email: 'admin@test.cz', password: 'heslo123', label: 'Jan Novak', role: 'ADMIN' },
-    { email: 'admin2@test.cz', password: 'heslo123', label: 'Marie Kralova', role: 'ADMIN' },
-    { email: 'petra@worker.cz', password: 'heslo123', label: 'Petra Svobodova', role: 'WORKER' },
-    { email: 'test2@test.cz', password: 'heslo123', label: 'Test User', role: 'WORKER' },
-    { email: 'karel@worker.cz', password: 'heslo123', label: 'Karel Dvorak', role: 'WORKER' },
+    { email: 'admin@brigadnik.cz', password: 'admin123', label: 'Admin Boss', role: 'ADMIN' },
+    { email: 'jana@brigadnik.cz', password: 'worker123', label: 'Jana Novakova', role: 'WORKER' },
+    { email: 'petr@brigadnik.cz', password: 'worker123', label: 'Petr Svoboda', role: 'WORKER' },
+    { email: 'lucie@brigadnik.cz', password: 'worker123', label: 'Lucie Kralova', role: 'WORKER' },
   ]
 
   const fillAccount = (account: typeof testAccounts[0]) => {
@@ -72,7 +73,7 @@ export function LoginPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email
+              E-mail
             </label>
             <input
               type="email"
@@ -108,7 +109,7 @@ export function LoginPage() {
         <p className="mt-4 text-center text-gray-600">
           Don't have an account?{' '}
           <Link to="/register" className="text-blue-600 hover:underline">
-            Register here
+            Register
           </Link>
         </p>
       </div>

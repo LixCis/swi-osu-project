@@ -17,16 +17,23 @@ export function MyTimePage() {
   const loadTimeRecords = async () => {
     try {
       const response = await api.get('/time/my')
-      setTimeRecords(response.data)
+      const records = response.data as TimeRecord[]
+      records.sort((a, b) => new Date(b.clockIn).getTime() - new Date(a.clockIn).getTime())
+      records.forEach((record) => {
+        if (record.breaks && record.breaks.length > 0) {
+          record.breaks.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
+        }
+      })
+      setTimeRecords(records)
       setError(null)
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load time records')
+      setError(err.response?.data?.message || 'Failed to load hours')
     } finally {
       setLoading(false)
     }
   }
 
-  if (loading) return <LoadingSpinner message="Loading time records..." fullScreen />
+  if (loading) return <LoadingSpinner message="Loading your hours..." fullScreen />
 
   const totalHours = timeRecords.reduce((sum, record) => sum + (record.computedHours ?? 0), 0)
 
@@ -39,7 +46,17 @@ export function MyTimePage() {
     return acc
   }, {} as Record<string, TimeRecord[]>)
 
-  const eventNames = Object.keys(groupedByEvent)
+  const eventNames = Object.keys(groupedByEvent).sort((a, b) => {
+    const aLatest = groupedByEvent[a].reduce((max, record) => {
+      const date = new Date(record.clockIn).getTime()
+      return date > max ? date : max
+    }, 0)
+    const bLatest = groupedByEvent[b].reduce((max, record) => {
+      const date = new Date(record.clockIn).getTime()
+      return date > max ? date : max
+    }, 0)
+    return bLatest - aLatest
+  })
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -61,7 +78,7 @@ export function MyTimePage() {
       {timeRecords.length === 0 ? (
         <EmptyState
           title="No time records yet"
-          message="Clock in on an approved registration to start tracking your hours."
+          message="Register for a position and start tracking your hours."
           actionLabel="My Registrations"
           actionTo="/my-registrations"
         />
@@ -102,20 +119,26 @@ export function MyTimePage() {
                                 <span className="font-medium text-orange-800 w-24">Break Start:</span>
                                 <span>{formatDateTime(b.startTime)}</span>
                               </div>
-                              {b.endTime && (
+                              {b.endTime ? (
                                 <div className="flex items-center gap-2 text-sm bg-orange-50 p-2 rounded">
                                   <span className="w-2 h-2 rounded-full bg-orange-400 inline-block"></span>
                                   <span className="font-medium text-orange-800 w-24">Break End:</span>
                                   <span>{formatDateTime(b.endTime)}</span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2 text-sm bg-orange-100 p-2 rounded">
+                                  <span className="w-2 h-2 rounded-full bg-orange-600 inline-block animate-pulse"></span>
+                                  <span className="font-medium text-orange-900 w-24">In progress</span>
+                                  <span className="text-orange-700 italic">(ongoing)</span>
                                 </div>
                               )}
                             </div>
                           ))}
 
                           {record.clockOut && (
-                            <div className="flex items-center gap-2 text-sm bg-green-50 p-2 rounded">
+                            <div className="flex items-center gap-2 text-sm bg-red-50 p-2 rounded">
                               <span className="w-2 h-2 rounded-full bg-red-500 inline-block"></span>
-                              <span className="font-medium text-green-800 w-24">Clock Out:</span>
+                              <span className="font-medium text-red-800 w-24">Clock Out:</span>
                               <span>{formatDateTime(record.clockOut)}</span>
                             </div>
                           )}

@@ -6,6 +6,8 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -28,22 +30,34 @@ public class PositionController {
 
     @PostMapping("/events/{eventId}/positions")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<PositionDto> createPosition(@PathVariable Long eventId, @Valid @RequestBody PositionDto dto) {
-        PositionDto createdPosition = positionService.createPosition(eventId, dto);
+    public ResponseEntity<PositionDto> createPosition(@PathVariable Long eventId, @Valid @RequestBody PositionDto dto, Authentication auth) {
+        Long userId = extractUserIdFromContext();
+        PositionDto createdPosition = positionService.createPosition(eventId, dto, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdPosition);
     }
 
     @PutMapping("/positions/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<PositionDto> updatePosition(@PathVariable Long id, @Valid @RequestBody PositionDto dto) {
-        PositionDto updatedPosition = positionService.updatePosition(id, dto);
+    public ResponseEntity<PositionDto> updatePosition(@PathVariable Long id, @Valid @RequestBody PositionDto dto, Authentication auth) {
+        Long userId = extractUserIdFromContext();
+        PositionDto updatedPosition = positionService.updatePosition(id, dto, userId);
         return ResponseEntity.ok(updatedPosition);
     }
 
     @DeleteMapping("/positions/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> deletePosition(@PathVariable Long id) {
-        positionService.deletePosition(id);
+    public ResponseEntity<Void> deletePosition(@PathVariable Long id, Authentication auth) {
+        Long userId = extractUserIdFromContext();
+        positionService.deletePosition(id, userId);
         return ResponseEntity.noContent().build();
+    }
+
+    private Long extractUserIdFromContext() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        Object credentials = auth.getCredentials();
+        if (credentials instanceof Long) {
+            return (Long) credentials;
+        }
+        return null;
     }
 }

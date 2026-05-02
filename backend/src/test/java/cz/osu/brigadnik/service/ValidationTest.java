@@ -23,6 +23,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Collections;
 
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
@@ -39,6 +40,12 @@ class ValidationTest {
 
     @Mock
     private RegistrationRepository registrationRepository;
+
+    @Mock
+    private SimpMessagingTemplate messagingTemplate;
+
+    @Mock
+    private DashboardService dashboardService;
 
     @InjectMocks
     private TimeService timeService;
@@ -103,7 +110,7 @@ class ValidationTest {
         when(timeRecordRepository.findById(1L)).thenReturn(java.util.Optional.of(timeRecord));
 
         assertThrows(IllegalArgumentException.class, () -> {
-            timeService.clockOut(1L);
+            timeService.clockOut(1L, 1L);
         });
     }
 
@@ -163,7 +170,7 @@ class ValidationTest {
         when(breakRepository.findByTimeRecordIdAndEndTimeIsNull(1L)).thenReturn(java.util.Optional.empty());
 
         assertThrows(IllegalArgumentException.class, () -> {
-            timeService.startBreak(1L);
+            timeService.startBreak(1L, 1L);
         });
     }
 
@@ -229,7 +236,7 @@ class ValidationTest {
         when(breakRepository.findByTimeRecordIdAndEndTimeIsNull(1L)).thenReturn(java.util.Optional.of(openBreak));
 
         assertThrows(IllegalArgumentException.class, () -> {
-            timeService.startBreak(1L);
+            timeService.startBreak(1L, 1L);
         });
     }
 }

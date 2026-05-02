@@ -66,8 +66,9 @@ public class EventController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> deleteEvent(@PathVariable Long id) {
-        eventService.deleteEvent(id);
+    public ResponseEntity<Void> deleteEvent(@PathVariable Long id, Authentication auth) {
+        Long userId = extractUserIdFromAuth(auth);
+        eventService.deleteEvent(id, userId);
         return ResponseEntity.noContent().build();
     }
 

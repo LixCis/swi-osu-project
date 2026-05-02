@@ -8,19 +8,31 @@ interface Props {
   registration: Registration
 }
 
+function computeWindowStatus(positionDate?: string, positionStartTime?: string, positionEndTime?: string): 'before' | 'open' | 'after' {
+  if (!positionDate || !positionStartTime || !positionEndTime) return 'open'
+  const windowOpen = new Date(`${positionDate}T${positionStartTime}Z`)
+  windowOpen.setHours(windowOpen.getHours() - 3)
+  const windowClose = new Date(`${positionDate}T${positionEndTime}Z`)
+  windowClose.setHours(windowClose.getHours() + 3)
+  const now = new Date()
+  if (now.getTime() < windowOpen.getTime()) return 'before'
+  if (now.getTime() > windowClose.getTime()) return 'after'
+  return 'open'
+}
+
 function computeCountdown(positionDate?: string, positionStartTime?: string): string {
   if (!positionDate || !positionStartTime) return ''
-  const start = new Date(`${positionDate}T${positionStartTime}`)
+  const start = new Date(`${positionDate}T${positionStartTime}Z`)
   const now = new Date()
   const diffMs = start.getTime() - now.getTime()
-  if (diffMs <= 0) return 'Začalo'
+  if (diffMs <= 0) return 'In progress'
   const totalMin = Math.floor(diffMs / 60000)
   const days = Math.floor(totalMin / 1440)
   const hours = Math.floor((totalMin % 1440) / 60)
   const minutes = totalMin % 60
-  if (days > 0) return `Začíná za ${days}d ${hours}h ${minutes}m`
-  if (hours > 0) return `Začíná za ${hours}h ${minutes}m`
-  return `Začíná za ${minutes}m`
+  if (days > 0) return `Starts in ${days}d ${hours}h ${minutes}m`
+  if (hours > 0) return `Starts in ${hours}h ${minutes}m`
+  return `Starts in ${minutes}m`
 }
 
 function formatElapsed(start: Date, now: Date): string {
@@ -34,8 +46,8 @@ function formatElapsed(start: Date, now: Date): string {
 
 export function NextShiftCard({ registration }: Props) {
   const [countdown, setCountdown] = useState(computeCountdown(registration.positionDate, registration.positionStartTime))
+  const [windowStatus, setWindowStatus] = useState<'before' | 'open' | 'after'>(computeWindowStatus(registration.positionDate, registration.positionStartTime, registration.positionEndTime))
   const [activeRecord, setActiveRecord] = useState<TimeRecord | null>(null)
-  const [, setTick] = useState(0)
   const navigate = useNavigate()
   const [error, setError] = useState<string | null>(null)
 
@@ -51,17 +63,18 @@ export function NextShiftCard({ registration }: Props) {
   useEffect(() => {
     const i = setInterval(() => {
       setCountdown(computeCountdown(registration.positionDate, registration.positionStartTime))
-      setTick((t) => t + 1)
+      setWindowStatus(computeWindowStatus(registration.positionDate, registration.positionStartTime, registration.positionEndTime))
     }, 1000)
     return () => clearInterval(i)
-  }, [registration.positionDate, registration.positionStartTime])
+  }, [registration.positionDate, registration.positionStartTime, registration.positionEndTime])
 
   const handleClockIn = async () => {
+    setError(null)
     try {
       await api.post(`/time/clock-in?registrationId=${registration.id}`)
       navigate('/my-registrations')
     } catch (e: any) {
-      setError(e.response?.data?.message || 'Clock-in selhal')
+      setError(e.response?.data?.message || 'Clock-in failed')
     }
   }
 
@@ -70,12 +83,12 @@ export function NextShiftCard({ registration }: Props) {
     return (
       <div className="bg-gradient-to-br from-blue-500 to-blue-700 text-white rounded-xl p-5 shadow-lg">
         <div className="text-sm opacity-90">{registration.eventName} · {registration.positionName}</div>
-        <div className="text-2xl font-bold mt-1">▶ Pracuješ — {elapsed}</div>
+        <div className="text-2xl font-bold mt-1">▶ Working — {elapsed}</div>
         <button
           onClick={() => navigate('/my-registrations')}
           className="mt-4 w-full py-3 bg-white text-blue-700 rounded-lg font-bold text-base hover:bg-blue-50"
         >
-          Otevřít time tracker
+          Open time tracker
         </button>
       </div>
     )
@@ -90,9 +103,12 @@ export function NextShiftCard({ registration }: Props) {
       </div>
       <button
         onClick={handleClockIn}
-        className="mt-4 w-full py-3 bg-white text-emerald-700 rounded-lg font-bold text-base hover:bg-emerald-50 active:bg-emerald-100"
+        disabled={windowStatus !== 'open'}
+        className="mt-4 w-full py-3 bg-white text-emerald-700 rounded-lg font-bold text-base hover:bg-emerald-50 active:bg-emerald-100 disabled:bg-gray-400 disabled:text-gray-700 disabled:cursor-not-allowed"
       >
-        ⏱ Clock In
+        {windowStatus === 'before' && '⏱ Shift window not open yet'}
+        {windowStatus === 'after' && '⏱ Shift window has closed'}
+        {windowStatus === 'open' && '⏱ Clock In'}
       </button>
       {error && <div className="mt-2 text-xs bg-red-700/40 px-3 py-2 rounded">{error}</div>}
     </div>

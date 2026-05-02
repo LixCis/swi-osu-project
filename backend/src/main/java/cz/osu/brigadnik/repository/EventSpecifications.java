@@ -18,7 +18,7 @@ public class EventSpecifications {
 
     public static Specification<Event> startDateFrom(LocalDate from) {
         if (from == null) return null;
-        return (root, q, cb) -> cb.greaterThanOrEqualTo(root.get("startDate"), from);
+        return (root, q, cb) -> cb.greaterThanOrEqualTo(root.get("endDate"), from);
     }
 
     public static Specification<Event> endDateTo(LocalDate to) {

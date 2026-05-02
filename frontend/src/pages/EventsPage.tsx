@@ -18,6 +18,7 @@ export function EventsPage() {
   }, [state.search, state.dateFrom, state.dateTo, state.upcoming, state.past])
 
   const loadEvents = async () => {
+    setError(null)
     try {
       const params: Record<string, string> = {}
       if (state.search) params.search = state.search
@@ -27,8 +28,8 @@ export function EventsPage() {
       if (state.dateTo) params.dateTo = state.dateTo
 
       const response = await api.get('/events', { params })
-      setEvents(response.data)
-      setError(null)
+      const sortedEvents = [...response.data].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
+      setEvents(sortedEvents)
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load events')
     } finally {
@@ -54,12 +55,24 @@ export function EventsPage() {
       )}
 
       <SearchFilter
-        searchPlaceholder="Hledat akci podle názvu nebo místa…"
+        searchPlaceholder="Search events by name or location…"
         search={state.search}
         onSearchChange={(v) => setField('search', v)}
         quickFilters={quickFilters}
         activeFilters={{ upcoming: state.upcoming, past: state.past }}
-        onFilterToggle={(field, value) => setField(field, value)}
+        onFilterToggle={(field) => {
+          if (field === 'upcoming' && state.upcoming === 'true') {
+            setField('upcoming', '')
+          } else if (field === 'upcoming') {
+            setField('upcoming', 'true')
+            setField('past', '')
+          } else if (field === 'past' && state.past === 'true') {
+            setField('past', '')
+          } else if (field === 'past') {
+            setField('past', 'true')
+            setField('upcoming', '')
+          }
+        }}
         resultCount={events.length}
         onClear={clear}
       />

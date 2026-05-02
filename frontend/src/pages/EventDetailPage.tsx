@@ -9,6 +9,7 @@ import type { Event, Position, Registration } from '../types'
 
 interface PositionWithRegistration extends Position {
   registration?: Registration
+  approvedCount?: number
 }
 
 export function EventDetailPage() {
@@ -33,19 +34,35 @@ export function EventDetailPage() {
         api.get(`/events/${id}`),
         api.get(`/events/${id}/positions`)
       ]
-      if (!isAdmin) {
+      if (isAdmin) {
+        requests.push(api.get(`/events/${id}/registrations`))
+      } else {
         requests.push(api.get('/registrations/my'))
       }
       const results = await Promise.all(requests)
       setEvent(results[0].data)
 
-      const registrationMap = new Map(
-        isAdmin ? [] : results[2].data.map((reg: Registration) => [reg.positionId, reg])
+      const allRegistrations: Registration[] = results[2].data
+      const userRegistrationMap = new Map(
+        isAdmin ? [] : allRegistrations.map((reg) => [reg.positionId, reg])
       )
+
+      const approvedCountByPosition = new Map<string, number>()
+      if (isAdmin) {
+        allRegistrations.forEach((reg) => {
+          if (reg.status === RegistrationStatus.APPROVED) {
+            approvedCountByPosition.set(
+              reg.positionId,
+              (approvedCountByPosition.get(reg.positionId) || 0) + 1
+            )
+          }
+        })
+      }
 
       const positionsWithReg = results[1].data.map((pos: Position) => ({
         ...pos,
-        registration: registrationMap.get(pos.id)
+        registration: userRegistrationMap.get(pos.id),
+        approvedCount: approvedCountByPosition.get(pos.id)
       }))
 
       setPositions(positionsWithReg)
@@ -58,12 +75,14 @@ export function EventDetailPage() {
   }
 
   const handleRegister = async (positionId: string) => {
+    setError(null)
     setRegisteringId(positionId)
     try {
       await api.post('/registrations', { positionId })
       navigate('/my-registrations')
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to register')
+      await loadEventData()
     } finally {
       setRegisteringId(null)
     }
@@ -144,7 +163,7 @@ export function EventDetailPage() {
                 ) : (
                   <button
                     onClick={() => handleRegister(position.id)}
-                    disabled={registeringId !== null}
+                    disabled={registeringId === position.id}
                     className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:bg-gray-400 font-medium"
                   >
                     {registeringId === position.id ? 'Registering...' : 'Register'}

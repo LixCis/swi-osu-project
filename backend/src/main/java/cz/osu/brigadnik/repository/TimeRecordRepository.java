@@ -12,4 +12,5 @@ public interface TimeRecordRepository extends JpaRepository<TimeRecord, Long> {
     List<TimeRecord> findByWorkerId(Long workerId);
     List<TimeRecord> findByRegistrationId(Long registrationId);
     Optional<TimeRecord> findByWorkerIdAndRegistrationIdAndClockOutIsNull(Long workerId, Long registrationId);
+    List<TimeRecord> findByClockOutIsNull();
 }
