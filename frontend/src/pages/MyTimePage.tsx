@@ -17,7 +17,14 @@ export function MyTimePage() {
   const loadTimeRecords = async () => {
     try {
       const response = await api.get('/time/my')
-      setTimeRecords(response.data)
+      const records = response.data as TimeRecord[]
+      records.sort((a, b) => new Date(b.clockIn).getTime() - new Date(a.clockIn).getTime())
+      records.forEach((record) => {
+        if (record.breaks && record.breaks.length > 0) {
+          record.breaks.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
+        }
+      })
+      setTimeRecords(records)
       setError(null)
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load hours')
@@ -39,7 +46,17 @@ export function MyTimePage() {
     return acc
   }, {} as Record<string, TimeRecord[]>)
 
-  const eventNames = Object.keys(groupedByEvent)
+  const eventNames = Object.keys(groupedByEvent).sort((a, b) => {
+    const aLatest = groupedByEvent[a].reduce((max, record) => {
+      const date = new Date(record.clockIn).getTime()
+      return date > max ? date : max
+    }, 0)
+    const bLatest = groupedByEvent[b].reduce((max, record) => {
+      const date = new Date(record.clockIn).getTime()
+      return date > max ? date : max
+    }, 0)
+    return bLatest - aLatest
+  })
 
   return (
     <div className="max-w-6xl mx-auto">

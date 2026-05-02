@@ -27,6 +27,7 @@ export function ManageEventsPage() {
   const [editingPositionId, setEditingPositionId] = useState<string | null>(null)
   const [positionForm, setPositionForm] = useState({ name: '', capacity: '', hourlyRate: '', date: '', startTime: '', endTime: '' })
   const [confirmState, setConfirmState] = useState<{ open: boolean; action: () => void; title: string; message: string; variant?: 'danger' } | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     loadEvents()

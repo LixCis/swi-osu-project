@@ -75,6 +75,7 @@ export function EventDetailPage() {
   }
 
   const handleRegister = async (positionId: string) => {
+    setError(null)
     setRegisteringId(positionId)
     try {
       await api.post('/registrations', { positionId })
@@ -162,7 +163,7 @@ export function EventDetailPage() {
                 ) : (
                   <button
                     onClick={() => handleRegister(position.id)}
-                    disabled={registeringId !== null}
+                    disabled={registeringId === position.id}
                     className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:bg-gray-400 font-medium"
                   >
                     {registeringId === position.id ? 'Registering...' : 'Register'}

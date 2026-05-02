@@ -18,6 +18,7 @@ export function EventsPage() {
   }, [state.search, state.dateFrom, state.dateTo, state.upcoming, state.past])
 
   const loadEvents = async () => {
+    setError(null)
     try {
       const params: Record<string, string> = {}
       if (state.search) params.search = state.search
@@ -27,8 +28,8 @@ export function EventsPage() {
       if (state.dateTo) params.dateTo = state.dateTo
 
       const response = await api.get('/events', { params })
-      setEvents(response.data)
-      setError(null)
+      const sortedEvents = [...response.data].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
+      setEvents(sortedEvents)
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load events')
     } finally {

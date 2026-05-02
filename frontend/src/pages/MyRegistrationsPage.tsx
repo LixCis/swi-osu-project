@@ -57,7 +57,23 @@ export function MyRegistrationsPage() {
     return acc
   }, {} as Record<string, Registration[]>)
 
-  const eventNames = Object.keys(groupedByEvent)
+  const eventNames = Object.keys(groupedByEvent).sort((a, b) => {
+    const aLatest = groupedByEvent[a].reduce((max, reg) => {
+      const date = new Date(reg.positionDate).getTime()
+      return date > max ? date : max
+    }, 0)
+    const bLatest = groupedByEvent[b].reduce((max, reg) => {
+      const date = new Date(reg.positionDate).getTime()
+      return date > max ? date : max
+    }, 0)
+    return bLatest - aLatest
+  })
+
+  Object.keys(groupedByEvent).forEach((eventName) => {
+    groupedByEvent[eventName].sort((a, b) => {
+      return new Date(b.positionDate).getTime() - new Date(a.positionDate).getTime()
+    })
+  })
 
   return (
     <div className="max-w-6xl mx-auto">

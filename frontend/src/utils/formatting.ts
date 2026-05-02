@@ -6,7 +6,7 @@ export function parseUtc(iso: string): Date {
 }
 
 export function formatDateTime(iso: string): string {
-  return parseUtc(iso).toLocaleString('cs-CZ', {
+  return parseUtc(iso).toLocaleString('en-GB', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -26,7 +26,7 @@ export function formatHours(decimal: number | null | undefined): string {
 }
 
 export function formatDate(iso: string): string {
-  return parseUtc(iso).toLocaleDateString('cs-CZ')
+  return parseUtc(iso).toLocaleDateString('en-GB')
 }
 
 export function formatStatus(status: string): string {
