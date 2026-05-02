@@ -110,7 +110,7 @@ class ValidationTest {
         when(timeRecordRepository.findById(1L)).thenReturn(java.util.Optional.of(timeRecord));
 
         assertThrows(IllegalArgumentException.class, () -> {
-            timeService.clockOut(1L);
+            timeService.clockOut(1L, 1L);
         });
     }
 
@@ -170,7 +170,7 @@ class ValidationTest {
         when(breakRepository.findByTimeRecordIdAndEndTimeIsNull(1L)).thenReturn(java.util.Optional.empty());
 
         assertThrows(IllegalArgumentException.class, () -> {
-            timeService.startBreak(1L);
+            timeService.startBreak(1L, 1L);
         });
     }
 
@@ -236,7 +236,7 @@ class ValidationTest {
         when(breakRepository.findByTimeRecordIdAndEndTimeIsNull(1L)).thenReturn(java.util.Optional.of(openBreak));
 
         assertThrows(IllegalArgumentException.class, () -> {
-            timeService.startBreak(1L);
+            timeService.startBreak(1L, 1L);
         });
     }
 }
