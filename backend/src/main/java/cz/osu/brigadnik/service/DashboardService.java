@@ -73,6 +73,15 @@ public class DashboardService {
                 .collect(Collectors.groupingBy(tr -> tr.getWorker().getId()));
 
         List<DashboardDto.WorkerSummaryDto> workers = byWorker.entrySet().stream()
+                .sorted((a, b) -> {
+                    LocalDateTime lastA = a.getValue().stream()
+                            .map(TimeRecord::getClockIn)
+                            .max(LocalDateTime::compareTo).orElse(LocalDateTime.MIN);
+                    LocalDateTime lastB = b.getValue().stream()
+                            .map(TimeRecord::getClockIn)
+                            .max(LocalDateTime::compareTo).orElse(LocalDateTime.MIN);
+                    return lastB.compareTo(lastA);
+                })
                 .map(entry -> {
                     List<TimeRecord> workerRecords = entry.getValue();
                     TimeRecord first = workerRecords.get(0);
@@ -96,6 +105,7 @@ public class DashboardService {
                     }
 
                     List<TimeRecordAdminDto> timeRecordDtos = workerRecords.stream()
+                            .sorted((a, b) -> b.getClockIn().compareTo(a.getClockIn()))
                             .map(this::toAdminDto)
                             .collect(Collectors.toList());
 
