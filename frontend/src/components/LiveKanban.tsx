@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
+import { useState, useEffect } from 'react'
 import type { LiveWorkerDto } from '../types'
 import { LiveWorkerStatus } from '../types'
 
@@ -42,13 +43,20 @@ function WorkerCard({ w }: { w: LiveWorkerDto }) {
       </div>
       <div className="flex-1 min-w-0">
         <div className="text-xs font-semibold truncate">{w.workerName}</div>
-        <div className={`text-[11px] ${c.color}`}>{w.positionName} · {elapsedSince(w.since)}</div>
+        <div className={`text-[11px] ${c.color}`}>{w.positionName}{w.since ? ` · ${elapsedSince(w.since)}` : ''}</div>
       </div>
     </motion.div>
   )
 }
 
 export function LiveKanban({ workers, connected }: Props) {
+  const [, setTick] = useState(0)
+
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 60000)
+    return () => clearInterval(id)
+  }, [])
+
   const groups = {
     WORKING: workers.filter((w) => w.status === LiveWorkerStatus.WORKING),
     ON_BREAK: workers.filter((w) => w.status === LiveWorkerStatus.ON_BREAK),
@@ -66,8 +74,8 @@ export function LiveKanban({ workers, connected }: Props) {
         </span>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 p-3 bg-slate-50">
-        {(['WORKING', 'ON_BREAK', 'NOT_ARRIVED'] as LiveWorkerStatus[]).map((s) => (
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 p-3 bg-slate-50">
+        {(['WORKING', 'ON_BREAK', 'NOT_ARRIVED', 'FINISHED'] as LiveWorkerStatus[]).map((s) => (
           <div key={s}>
             <div className={`text-xs font-bold uppercase mb-2 ${LABELS[s].color}`}>
               {LABELS[s].title} ({groups[s].length})

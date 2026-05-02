@@ -33,10 +33,20 @@ export function AdminDashboard() {
     }
   }
 
-  const { workers: liveWorkers, connected, setInitial } = useLiveDashboard(selectedEventId)
+  const loadDashboardData = async () => {
+    try {
+      const response = await api.get(`/dashboard/event/${selectedEventId}`)
+      setDashboardData(response.data)
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to load dashboard data')
+    }
+  }
+
+  const { workers: liveWorkers, connected, setInitial } = useLiveDashboard(selectedEventId, loadDashboardData)
 
   useEffect(() => {
     if (selectedEventId) {
+      setExpandedWorker(null)
       loadDashboardData()
     }
   }, [selectedEventId])
@@ -46,16 +56,6 @@ export function AdminDashboard() {
       setInitial(dashboardData.liveWorkers)
     }
   }, [dashboardData])
-
-  const loadDashboardData = async () => {
-    try {
-      const response = await api.get(`/dashboard/event/${selectedEventId}`)
-      setDashboardData(response.data)
-      setExpandedWorker(null)
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load dashboard data')
-    }
-  }
 
   if (loading) return <LoadingSpinner message="Loading dashboard..." fullScreen />
 
