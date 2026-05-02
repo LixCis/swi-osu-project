@@ -17,6 +17,8 @@ interface RegistrationDetail {
   createdAt: string
   workerName?: string
   workerEmail?: string
+  workerPhone?: string
+  workerDateOfBirth?: string
   positionName?: string
   positionDate?: string
   positionStartTime?: string
@@ -384,6 +386,12 @@ export function ManageRegistrationsPage() {
                       <div className="font-medium">{reg.workerName || 'Worker'}</div>
                       {reg.workerEmail && (
                         <div className="text-xs text-gray-500">{reg.workerEmail}</div>
+                      )}
+                      {reg.workerPhone && (
+                        <div className="text-xs text-gray-500">{reg.workerPhone}</div>
+                      )}
+                      {reg.workerDateOfBirth && (
+                        <div className="text-xs text-gray-500">{formatDate(reg.workerDateOfBirth)}</div>
                       )}
                     </td>
                     <td className="px-6 py-4">{reg.positionName || 'Position'}</td>

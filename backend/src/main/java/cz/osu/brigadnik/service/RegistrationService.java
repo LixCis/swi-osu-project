@@ -239,6 +239,8 @@ public class RegistrationService {
                 .workerId(registration.getWorker().getId())
                 .workerName(registration.getWorker().getFirstName() + " " + registration.getWorker().getLastName())
                 .workerEmail(registration.getWorker().getEmail())
+                .workerPhone(registration.getWorker().getPhone())
+                .workerDateOfBirth(registration.getWorker().getDateOfBirth())
                 .positionName(registration.getPosition().getName())
                 .eventName(registration.getPosition().getEvent().getName())
                 .status(registration.getStatus())
