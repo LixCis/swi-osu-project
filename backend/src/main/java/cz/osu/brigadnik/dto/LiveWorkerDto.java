@@ -22,5 +22,6 @@ public class LiveWorkerDto {
     private Long eventId;
     private Long registrationId;
     private long completedBreakSeconds;
+    private long previousSessionSeconds;
     private BigDecimal workedHours;
 }

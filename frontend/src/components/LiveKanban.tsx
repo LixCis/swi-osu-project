@@ -26,10 +26,11 @@ function elapsedSince(since: string | null): string {
   return h > 0 ? `${h}h ${m}m` : `${m}m`
 }
 
-function elapsedWorkSince(since: string | null, completedBreakSeconds: number): string {
+function elapsedWorkSince(since: string | null, completedBreakSeconds: number, previousSessionSeconds: number): string {
   if (!since) return ''
   const start = new Date(since.endsWith('Z') ? since : since + 'Z')
-  const totalSeconds = Math.max(0, Math.floor((Date.now() - start.getTime()) / 1000) - completedBreakSeconds)
+  const currentSeconds = Math.max(0, Math.floor((Date.now() - start.getTime()) / 1000) - completedBreakSeconds)
+  const totalSeconds = currentSeconds + previousSessionSeconds
   const totalMin = Math.floor(totalSeconds / 60)
   const h = Math.floor(totalMin / 60)
   const m = totalMin % 60
@@ -37,7 +38,7 @@ function elapsedWorkSince(since: string | null, completedBreakSeconds: number): 
 }
 
 function timeLabel(w: LiveWorkerDto): string {
-  if (w.status === LiveWorkerStatus.WORKING) return elapsedWorkSince(w.since, w.completedBreakSeconds)
+  if (w.status === LiveWorkerStatus.WORKING) return elapsedWorkSince(w.since, w.completedBreakSeconds, w.previousSessionSeconds)
   if (w.status === LiveWorkerStatus.ON_BREAK) return elapsedSince(w.since)
   if (w.status === LiveWorkerStatus.FINISHED && w.workedHours != null) return formatHours(w.workedHours)
   return ''

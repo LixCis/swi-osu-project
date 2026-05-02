@@ -56,13 +56,23 @@ public class TimeService {
         LiveWorkerStatus status = dashboardService.computeStatus(registration, records, breakRepository);
         LocalDateTime since = dashboardService.computeSince(status, records);
         long completedBreakSeconds = 0;
+        long previousSessionSeconds = 0;
         BigDecimal workedHours = null;
+
+        previousSessionSeconds = records.stream()
+                .filter(rec -> rec.getClockOut() != null && rec.getComputedHours() != null)
+                .mapToLong(rec -> rec.getComputedHours().multiply(java.math.BigDecimal.valueOf(3600)).longValue())
+                .sum();
+
         if (!records.isEmpty()) {
             TimeRecord latest = records.get(records.size() - 1);
             if (status == LiveWorkerStatus.WORKING || status == LiveWorkerStatus.ON_BREAK) {
                 completedBreakSeconds = dashboardService.computeCompletedBreakSeconds(latest);
             } else if (status == LiveWorkerStatus.FINISHED) {
-                workedHours = latest.getComputedHours();
+                workedHours = records.stream()
+                        .filter(rec -> rec.getClockOut() != null && rec.getComputedHours() != null)
+                        .map(TimeRecord::getComputedHours)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
             }
         }
         LiveWorkerDto dto = LiveWorkerDto.builder()
@@ -74,6 +84,7 @@ public class TimeService {
                 .eventId(eventId)
                 .registrationId(registration.getId())
                 .completedBreakSeconds(completedBreakSeconds)
+                .previousSessionSeconds(previousSessionSeconds)
                 .workedHours(workedHours)
                 .build();
         messagingTemplate.convertAndSend("/topic/event/" + eventId + "/live", dto);

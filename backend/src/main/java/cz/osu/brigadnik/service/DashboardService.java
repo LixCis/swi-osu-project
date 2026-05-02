@@ -196,13 +196,23 @@ public class DashboardService {
             LiveWorkerStatus status = computeStatus(r, records, breakRepository);
             LocalDateTime since = computeSince(status, records);
             long completedBreakSeconds = 0;
+            long previousSessionSeconds = 0;
             BigDecimal workedHours = null;
+
+            previousSessionSeconds = records.stream()
+                    .filter(rec -> rec.getClockOut() != null && rec.getComputedHours() != null)
+                    .mapToLong(rec -> rec.getComputedHours().multiply(java.math.BigDecimal.valueOf(3600)).longValue())
+                    .sum();
+
             if (!records.isEmpty()) {
                 TimeRecord latest = records.get(records.size() - 1);
                 if (status == LiveWorkerStatus.WORKING || status == LiveWorkerStatus.ON_BREAK) {
                     completedBreakSeconds = computeCompletedBreakSeconds(latest);
                 } else if (status == LiveWorkerStatus.FINISHED) {
-                    workedHours = latest.getComputedHours();
+                    workedHours = records.stream()
+                            .filter(rec -> rec.getClockOut() != null && rec.getComputedHours() != null)
+                            .map(TimeRecord::getComputedHours)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
                 }
             }
             result.add(LiveWorkerDto.builder()
@@ -214,6 +224,7 @@ public class DashboardService {
                     .eventId(eventId)
                     .registrationId(r.getId())
                     .completedBreakSeconds(completedBreakSeconds)
+                    .previousSessionSeconds(previousSessionSeconds)
                     .workedHours(workedHours)
                     .build());
         }
