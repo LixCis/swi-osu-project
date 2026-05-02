@@ -55,6 +55,16 @@ public class TimeService {
         List<TimeRecord> records = timeRecordRepository.findByRegistrationId(registration.getId());
         LiveWorkerStatus status = dashboardService.computeStatus(registration, records, breakRepository);
         LocalDateTime since = dashboardService.computeSince(status, records);
+        long completedBreakSeconds = 0;
+        BigDecimal workedHours = null;
+        if (!records.isEmpty()) {
+            TimeRecord latest = records.get(records.size() - 1);
+            if (status == LiveWorkerStatus.WORKING || status == LiveWorkerStatus.ON_BREAK) {
+                completedBreakSeconds = dashboardService.computeCompletedBreakSeconds(latest);
+            } else if (status == LiveWorkerStatus.FINISHED) {
+                workedHours = latest.getComputedHours();
+            }
+        }
         LiveWorkerDto dto = LiveWorkerDto.builder()
                 .workerId(registration.getWorker().getId())
                 .workerName(registration.getWorker().getFirstName() + " " + registration.getWorker().getLastName())
@@ -63,6 +73,8 @@ public class TimeService {
                 .since(since)
                 .eventId(eventId)
                 .registrationId(registration.getId())
+                .completedBreakSeconds(completedBreakSeconds)
+                .workedHours(workedHours)
                 .build();
         messagingTemplate.convertAndSend("/topic/event/" + eventId + "/live", dto);
     }

@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -194,6 +195,16 @@ public class DashboardService {
             List<TimeRecord> records = timeRecordRepository.findByRegistrationId(r.getId());
             LiveWorkerStatus status = computeStatus(r, records, breakRepository);
             LocalDateTime since = computeSince(status, records);
+            long completedBreakSeconds = 0;
+            BigDecimal workedHours = null;
+            if (!records.isEmpty()) {
+                TimeRecord latest = records.get(records.size() - 1);
+                if (status == LiveWorkerStatus.WORKING || status == LiveWorkerStatus.ON_BREAK) {
+                    completedBreakSeconds = computeCompletedBreakSeconds(latest);
+                } else if (status == LiveWorkerStatus.FINISHED) {
+                    workedHours = latest.getComputedHours();
+                }
+            }
             result.add(LiveWorkerDto.builder()
                     .workerId(r.getWorker().getId())
                     .workerName(r.getWorker().getFirstName() + " " + r.getWorker().getLastName())
@@ -202,9 +213,18 @@ public class DashboardService {
                     .since(since)
                     .eventId(eventId)
                     .registrationId(r.getId())
+                    .completedBreakSeconds(completedBreakSeconds)
+                    .workedHours(workedHours)
                     .build());
         }
         return result;
+    }
+
+    public long computeCompletedBreakSeconds(TimeRecord latest) {
+        return breakRepository.findByTimeRecordId(latest.getId()).stream()
+                .filter(b -> b.getEndTime() != null)
+                .mapToLong(b -> Duration.between(b.getStartTime(), b.getEndTime()).toSeconds())
+                .sum();
     }
 
     public LocalDateTime computeSince(LiveWorkerStatus status, List<TimeRecord> records) {

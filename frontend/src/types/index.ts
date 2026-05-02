@@ -152,4 +152,6 @@ export interface LiveWorkerDto {
   since: string | null
   eventId: string
   registrationId: string
+  completedBreakSeconds: number
+  workedHours: number | null
 }
