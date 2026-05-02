@@ -6,7 +6,7 @@ import { EmptyState } from '../components/EmptyState'
 import { SearchFilter } from '../components/SearchFilter'
 import { useSearchFilters } from '../hooks/useSearchFilters'
 import { RegistrationStatus } from '../types'
-import { formatStatus } from '../utils/formatting'
+import { formatStatus, formatDate } from '../utils/formatting'
 import type { Registration } from '../types'
 
 export function MyRegistrationsPage() {
@@ -116,7 +116,7 @@ export function MyRegistrationsPage() {
                           {reg.positionName || 'Position'}
                         </p>
                         <p className="text-gray-600 mb-1">
-                          <strong>Date:</strong> {reg.positionDate}
+                          <strong>Date:</strong> {formatDate(reg.positionDate || '')}
                         </p>
                         <p className="text-gray-600">
                           <strong>Time:</strong> {reg.positionStartTime} – {reg.positionEndTime}

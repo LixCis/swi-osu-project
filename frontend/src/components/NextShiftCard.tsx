@@ -48,7 +48,6 @@ export function NextShiftCard({ registration }: Props) {
   const [countdown, setCountdown] = useState(computeCountdown(registration.positionDate, registration.positionStartTime))
   const [windowStatus, setWindowStatus] = useState<'before' | 'open' | 'after'>(computeWindowStatus(registration.positionDate, registration.positionStartTime, registration.positionEndTime))
   const [activeRecord, setActiveRecord] = useState<TimeRecord | null>(null)
-  const [, setTick] = useState(0)
   const navigate = useNavigate()
   const [error, setError] = useState<string | null>(null)
 
@@ -65,7 +64,6 @@ export function NextShiftCard({ registration }: Props) {
     const i = setInterval(() => {
       setCountdown(computeCountdown(registration.positionDate, registration.positionStartTime))
       setWindowStatus(computeWindowStatus(registration.positionDate, registration.positionStartTime, registration.positionEndTime))
-      setTick((t) => t + 1)
     }, 1000)
     return () => clearInterval(i)
   }, [registration.positionDate, registration.positionStartTime, registration.positionEndTime])

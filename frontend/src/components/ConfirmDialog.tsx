@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 interface Props {
   open: boolean
@@ -12,6 +12,7 @@ interface Props {
 }
 
 export function ConfirmDialog({ open, title, message, confirmLabel = 'Confirm', cancelLabel = 'Cancel', onConfirm, onCancel, variant = 'primary' }: Props) {
+  const [confirming, setConfirming] = useState(false)
   useEffect(() => {
     if (!open) return
     const handler = (e: KeyboardEvent) => {
@@ -30,7 +31,13 @@ export function ConfirmDialog({ open, title, message, confirmLabel = 'Confirm', 
         <p className="text-gray-700 mb-4">{message}</p>
         <div className="flex gap-2 justify-end">
           <button onClick={onCancel} className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded">{cancelLabel}</button>
-          <button onClick={onConfirm} className={`px-4 py-2 ${btnClass} text-white rounded`}>{confirmLabel}</button>
+          <button
+            onClick={() => { setConfirming(true); onConfirm() }}
+            disabled={confirming}
+            className={`px-4 py-2 ${btnClass} text-white rounded disabled:opacity-50`}
+          >
+            {confirmLabel}
+          </button>
         </div>
       </div>
     </div>

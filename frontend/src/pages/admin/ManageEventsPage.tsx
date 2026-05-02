@@ -128,6 +128,10 @@ export function ManageEventsPage() {
     e.preventDefault()
     if (!expandedEvent) return
     setError(null)
+    if (positionForm.startTime && positionForm.endTime && positionForm.endTime <= positionForm.startTime) {
+      setError('End time must be after start time')
+      return
+    }
     setSubmitting(true)
     try {
       const payload = {
