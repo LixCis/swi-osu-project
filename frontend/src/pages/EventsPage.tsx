@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../api/axios'
 import { LoadingSpinner } from '../components/LoadingSpinner'
 import { EmptyState } from '../components/EmptyState'
 import { SearchFilter } from '../components/SearchFilter'
 import { useSearchFilters } from '../hooks/useSearchFilters'
+import { getErrorMessage } from '../utils/errors'
 import type { Event } from '../types'
 
 export function EventsPage() {
@@ -13,11 +14,7 @@ export function EventsPage() {
   const [error, setError] = useState<string | null>(null)
   const { state, setField, clear } = useSearchFilters({ search: '', dateFrom: '', dateTo: '', upcoming: '', past: '' })
 
-  useEffect(() => {
-    loadEvents()
-  }, [state.search, state.dateFrom, state.dateTo, state.upcoming, state.past])
-
-  const loadEvents = async () => {
+  const loadEvents = useCallback(async () => {
     setError(null)
     try {
       const params: Record<string, string> = {}
@@ -27,15 +24,19 @@ export function EventsPage() {
       if (state.dateFrom) params.dateFrom = state.dateFrom
       if (state.dateTo) params.dateTo = state.dateTo
 
-      const response = await api.get('/events', { params })
+      const response = await api.get<Event[]>('/events', { params })
       const sortedEvents = [...response.data].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
       setEvents(sortedEvents)
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load events')
+    } catch (err) {
+      setError(getErrorMessage(err, 'Failed to load events'))
     } finally {
       setLoading(false)
     }
-  }
+  }, [state.search, state.dateFrom, state.dateTo, state.upcoming, state.past])
+
+  useEffect(() => {
+    void loadEvents()
+  }, [loadEvents])
 
   if (loading) return <LoadingSpinner message="Loading events..." fullScreen />
 

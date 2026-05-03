@@ -13,8 +13,14 @@ interface Props {
 
 export function ConfirmDialog({ open, title, message, confirmLabel = 'Confirm', cancelLabel = 'Cancel', onConfirm, onCancel, variant = 'primary' }: Props) {
   const [confirming, setConfirming] = useState(false)
+  const [prevOpen, setPrevOpen] = useState(open)
+  if (open !== prevOpen) {
+    setPrevOpen(open)
+    if (!open) setConfirming(false)
+  }
+
   useEffect(() => {
-    if (!open) { setConfirming(false); return }
+    if (!open) return
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onCancel()
     }

@@ -3,36 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import api from '../api/axios'
 import type { Registration, TimeRecord } from '../types'
 import { formatDate, parseUtc } from '../utils/formatting'
+import { computeWindowStatus, computeCountdown, type ShiftWindowStatus } from '../utils/shiftWindow'
+import { getErrorMessage } from '../utils/errors'
 
 interface Props {
   registration: Registration
-}
-
-function computeWindowStatus(positionDate?: string, positionStartTime?: string, positionEndTime?: string): 'before' | 'open' | 'after' {
-  if (!positionDate || !positionStartTime || !positionEndTime) return 'open'
-  const windowOpen = new Date(`${positionDate}T${positionStartTime}Z`)
-  windowOpen.setHours(windowOpen.getHours() - 3)
-  const windowClose = new Date(`${positionDate}T${positionEndTime}Z`)
-  windowClose.setHours(windowClose.getHours() + 3)
-  const now = new Date()
-  if (now.getTime() < windowOpen.getTime()) return 'before'
-  if (now.getTime() > windowClose.getTime()) return 'after'
-  return 'open'
-}
-
-function computeCountdown(positionDate?: string, positionStartTime?: string): string {
-  if (!positionDate || !positionStartTime) return ''
-  const start = new Date(`${positionDate}T${positionStartTime}Z`)
-  const now = new Date()
-  const diffMs = start.getTime() - now.getTime()
-  if (diffMs <= 0) return 'In progress'
-  const totalMin = Math.floor(diffMs / 60000)
-  const days = Math.floor(totalMin / 1440)
-  const hours = Math.floor((totalMin % 1440) / 60)
-  const minutes = totalMin % 60
-  if (days > 0) return `Starts in ${days}d ${hours}h ${minutes}m`
-  if (hours > 0) return `Starts in ${hours}h ${minutes}m`
-  return `Starts in ${minutes}m`
 }
 
 function formatElapsed(start: Date, now: Date): string {
@@ -45,8 +20,12 @@ function formatElapsed(start: Date, now: Date): string {
 }
 
 export function NextShiftCard({ registration }: Props) {
-  const [countdown, setCountdown] = useState(computeCountdown(registration.positionDate, registration.positionStartTime))
-  const [windowStatus, setWindowStatus] = useState<'before' | 'open' | 'after'>(computeWindowStatus(registration.positionDate, registration.positionStartTime, registration.positionEndTime))
+  const [countdown, setCountdown] = useState(() =>
+    computeCountdown(registration.positionDate, registration.positionStartTime)
+  )
+  const [windowStatus, setWindowStatus] = useState<ShiftWindowStatus>(() =>
+    computeWindowStatus(registration.positionDate, registration.positionStartTime, registration.positionEndTime)
+  )
   const [activeRecord, setActiveRecord] = useState<TimeRecord | null>(null)
   const navigate = useNavigate()
   const [error, setError] = useState<string | null>(null)
@@ -73,8 +52,8 @@ export function NextShiftCard({ registration }: Props) {
     try {
       await api.post(`/time/clock-in?registrationId=${registration.id}`)
       navigate('/my-registrations')
-    } catch (e: any) {
-      setError(e.response?.data?.message || 'Clock-in failed')
+    } catch (e) {
+      setError(getErrorMessage(e, 'Clock-in failed'))
     }
   }
 

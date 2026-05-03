@@ -1,5 +1,7 @@
+import type { ReactNode } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import { AuthProvider, useAuth } from './context/AuthContext'
+import { AuthProvider } from './context/AuthContext'
+import { useAuth } from './context/useAuth'
 import { Layout } from './components/Layout'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { Role } from './types'
@@ -16,7 +18,7 @@ import { AdminDashboard } from './pages/admin/AdminDashboard'
 import { ManageEventsPage } from './pages/admin/ManageEventsPage'
 import { ManageRegistrationsPage } from './pages/admin/ManageRegistrationsPage'
 
-function WorkerRoute({ children }: { children: React.ReactNode }) {
+function WorkerRoute({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   if (user?.role === Role.ADMIN) {
     return <Navigate to="/events" replace />

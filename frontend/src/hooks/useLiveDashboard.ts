@@ -12,8 +12,14 @@ interface UseLiveDashboardResult {
 export function useLiveDashboard(eventId: string | null, onUpdate?: () => void): UseLiveDashboardResult {
   const [workers, setWorkers] = useState<Map<string, LiveWorkerDto>>(new Map())
   const [connected, setConnected] = useState(false)
+  const [prevEventId, setPrevEventId] = useState(eventId)
   const onUpdateRef = useRef(onUpdate)
   useEffect(() => { onUpdateRef.current = onUpdate }, [onUpdate])
+
+  if (prevEventId !== eventId) {
+    setPrevEventId(eventId)
+    setWorkers(new Map())
+  }
 
   const setInitial = (initial: LiveWorkerDto[]) => {
     setWorkers((prev) => {
@@ -26,7 +32,6 @@ export function useLiveDashboard(eventId: string | null, onUpdate?: () => void):
   }
 
   useEffect(() => {
-    setWorkers(new Map())
     if (!eventId) return
     const token = localStorage.getItem('token')
     if (!token) return
@@ -56,7 +61,7 @@ export function useLiveDashboard(eventId: string | null, onUpdate?: () => void):
 
     client.activate()
     return () => {
-      client.deactivate()
+      void client.deactivate()
     }
   }, [eventId])
 

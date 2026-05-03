@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, type ChangeEvent, type SubmitEvent } from 'react'
 import api from '../../api/axios'
 import { LoadingSpinner } from '../../components/LoadingSpinner'
 import { SearchFilter } from '../../components/SearchFilter'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useSearchFilters } from '../../hooks/useSearchFilters'
+import { getErrorMessage } from '../../utils/errors'
 import type { Event, Position } from '../../types'
 
 export function ManageEventsPage() {
@@ -26,14 +27,10 @@ export function ManageEventsPage() {
   const [showPositionForm, setShowPositionForm] = useState(false)
   const [editingPositionId, setEditingPositionId] = useState<string | null>(null)
   const [positionForm, setPositionForm] = useState({ name: '', capacity: '', hourlyRate: '', date: '', startTime: '', endTime: '' })
-  const [confirmState, setConfirmState] = useState<{ open: boolean; action: () => void; title: string; message: string; variant?: 'danger' } | null>(null)
+  const [confirmState, setConfirmState] = useState<{ open: boolean; action: () => void | Promise<void>; title: string; message: string; variant?: 'danger' } | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
-  useEffect(() => {
-    loadEvents()
-  }, [state.search, state.dateFrom, state.dateTo])
-
-  const loadEvents = async () => {
+  const loadEvents = useCallback(async () => {
     setExpandedEvent(null)
     setPositions([])
     try {
@@ -41,24 +38,28 @@ export function ManageEventsPage() {
       if (state.search) params.search = state.search
       if (state.dateFrom) params.dateFrom = state.dateFrom
       if (state.dateTo) params.dateTo = state.dateTo
-      const response = await api.get('/events/my', { params })
+      const response = await api.get<Event[]>('/events/my', { params })
       const sorted = [...response.data].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
       setEvents(sorted)
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load events')
+    } catch (err) {
+      setError(getErrorMessage(err, 'Failed to load events'))
     } finally {
       setLoading(false)
     }
-  }
+  }, [state.search, state.dateFrom, state.dateTo])
+
+  useEffect(() => {
+    void loadEvents()
+  }, [loadEvents])
 
   const loadPositions = async (eventId: string) => {
     setError(null)
     try {
-      const response = await api.get(`/events/${eventId}/positions`)
+      const response = await api.get<Position[]>(`/events/${eventId}/positions`)
       const sorted = [...response.data].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       setPositions(sorted)
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load positions')
+    } catch (err) {
+      setError(getErrorMessage(err, 'Failed to load positions'))
     }
   }
 
@@ -75,12 +76,12 @@ export function ManageEventsPage() {
     }
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError(null)
     setSubmitting(true)
@@ -93,9 +94,9 @@ export function ManageEventsPage() {
       setFormData({ name: '', description: '', location: '', startDate: '', endDate: '' })
       setShowForm(false)
       setEditingId(null)
-      loadEvents()
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to save event')
+      await loadEvents()
+    } catch (err) {
+      setError(getErrorMessage(err, 'Failed to save event'))
     } finally {
       setSubmitting(false)
     }
@@ -108,7 +109,7 @@ export function ManageEventsPage() {
     setShowForm(true)
   }
 
-  const handleDelete = async (id: string, name: string) => {
+  const handleDelete = (id: string, name: string) => {
     setConfirmState({
       open: true,
       title: 'Delete Event',
@@ -117,15 +118,15 @@ export function ManageEventsPage() {
       action: async () => {
         try {
           await api.delete(`/events/${id}`)
-          loadEvents()
-        } catch (err: any) {
-          setError(err.response?.data?.message || 'Failed to delete event')
+          await loadEvents()
+        } catch (err) {
+          setError(getErrorMessage(err, 'Failed to delete event'))
         }
       }
     })
   }
 
-  const handlePositionSubmit = async (e: React.FormEvent) => {
+  const handlePositionSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!expandedEvent) return
     setError(null)
@@ -152,8 +153,8 @@ export function ManageEventsPage() {
       setShowPositionForm(false)
       setEditingPositionId(null)
       await loadPositions(expandedEvent)
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to save position')
+    } catch (err) {
+      setError(getErrorMessage(err, 'Failed to save position'))
     } finally {
       setSubmitting(false)
     }
@@ -173,7 +174,7 @@ export function ManageEventsPage() {
     setShowPositionForm(true)
   }
 
-  const handleDeletePosition = async (posId: string, name: string) => {
+  const handleDeletePosition = (posId: string, name: string) => {
     setConfirmState({
       open: true,
       title: 'Delete Position',
@@ -184,8 +185,8 @@ export function ManageEventsPage() {
         try {
           await api.delete(`/positions/${posId}`)
           await loadPositions(expandedEvent)
-        } catch (err: any) {
-          setError(err.response?.data?.message || 'Failed to delete position')
+        } catch (err) {
+          setError(getErrorMessage(err, 'Failed to delete position'))
         }
       }
     })
@@ -351,7 +352,7 @@ export function ManageEventsPage() {
                     Delete
                   </button>
                   <button
-                    onClick={() => togglePositions(event.id)}
+                    onClick={() => void togglePositions(event.id)}
                     className="bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800 text-sm font-medium"
                   >
                     {expandedEvent === event.id ? '▼ Hide Positions' : '▶ Manage Positions'}

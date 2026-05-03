@@ -4,6 +4,7 @@ import api from '../api/axios'
 import { LoadingSpinner } from '../components/LoadingSpinner'
 import { EmptyState } from '../components/EmptyState'
 import { NextShiftCard } from '../components/NextShiftCard'
+import { getErrorMessage } from '../utils/errors'
 import type { Registration } from '../types'
 
 export function HomePage() {
@@ -11,19 +12,26 @@ export function HomePage() {
   const [error, setError] = useState<string | null>(null)
   const location = useLocation()
 
-  useEffect(() => {
-    load()
-  }, [location.key])
-
-  const load = async () => {
+  const [prevKey, setPrevKey] = useState(location.key)
+  if (prevKey !== location.key) {
+    setPrevKey(location.key)
     setError(null)
-    try {
-      const res = await api.get<Registration[]>('/registrations/my/upcoming')
-      setUpcoming(res.data)
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load shifts')
-    }
   }
+
+  useEffect(() => {
+    let cancelled = false
+    api.get<Registration[]>('/registrations/my/upcoming')
+      .then((res) => {
+        if (cancelled) return
+        setUpcoming(res.data)
+        setError(null)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setError(getErrorMessage(err, 'Failed to load shifts'))
+      })
+    return () => { cancelled = true }
+  }, [location.key])
 
   if (error) return <div className="p-4 text-red-600">{error}</div>
   if (upcoming === null) return <LoadingSpinner message="Loading your shifts" />

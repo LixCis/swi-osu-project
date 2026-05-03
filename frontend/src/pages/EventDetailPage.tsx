@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import type { AxiosResponse } from 'axios'
 import api from '../api/axios'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/useAuth'
 import { LoadingSpinner } from '../components/LoadingSpinner'
 import { RegistrationStatus, Role } from '../types'
 import { formatStatus } from '../utils/formatting'
+import { getErrorMessage } from '../utils/errors'
 import type { Event, Position, Registration } from '../types'
 
 interface PositionWithRegistration extends Position {
@@ -23,14 +25,9 @@ export function EventDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [registeringId, setRegisteringId] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!id) return
-    loadEventData()
-  }, [id])
-
-  const loadEventData = async () => {
+  const loadEventData = useCallback(async () => {
     try {
-      const requests: Promise<any>[] = [
+      const requests: Promise<AxiosResponse>[] = [
         api.get(`/events/${id}`),
         api.get(`/events/${id}/positions`)
       ]
@@ -67,12 +64,17 @@ export function EventDetailPage() {
 
       setPositions(positionsWithReg)
       setError(null)
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load event')
+    } catch (err) {
+      setError(getErrorMessage(err, 'Failed to load event'))
     } finally {
       setLoading(false)
     }
-  }
+  }, [id, isAdmin])
+
+  useEffect(() => {
+    if (!id) return
+    void loadEventData()
+  }, [id, loadEventData])
 
   const handleRegister = async (positionId: string) => {
     setError(null)
@@ -80,8 +82,8 @@ export function EventDetailPage() {
     try {
       await api.post('/registrations', { positionId })
       navigate('/my-registrations')
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to register')
+    } catch (err) {
+      setError(getErrorMessage(err, 'Failed to register'))
       await loadEventData()
     } finally {
       setRegisteringId(null)

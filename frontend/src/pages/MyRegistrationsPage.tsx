@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import api from '../api/axios'
 import { TimeTracker } from '../components/TimeTracker'
 import { LoadingSpinner } from '../components/LoadingSpinner'
@@ -7,6 +7,7 @@ import { SearchFilter } from '../components/SearchFilter'
 import { useSearchFilters } from '../hooks/useSearchFilters'
 import { RegistrationStatus } from '../types'
 import { formatStatus, formatDate } from '../utils/formatting'
+import { getErrorMessage } from '../utils/errors'
 import type { Registration } from '../types'
 
 export function MyRegistrationsPage() {
@@ -15,24 +16,24 @@ export function MyRegistrationsPage() {
   const [error, setError] = useState<string | null>(null)
   const { state, setField, clear } = useSearchFilters({ search: '', status: '' })
 
-  useEffect(() => {
-    loadRegistrations()
-  }, [state.status, state.search])
-
-  const loadRegistrations = async () => {
+  const loadRegistrations = useCallback(async () => {
     setError(null)
     try {
       const params: Record<string, string> = {}
       if (state.status) params.status = state.status
       if (state.search) params.search = state.search
-      const response = await api.get('/registrations/my', { params })
+      const response = await api.get<Registration[]>('/registrations/my', { params })
       setRegistrations(response.data)
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load registrations')
+    } catch (err) {
+      setError(getErrorMessage(err, 'Failed to load registrations'))
     } finally {
       setLoading(false)
     }
-  }
+  }, [state.status, state.search])
+
+  useEffect(() => {
+    void loadRegistrations()
+  }, [loadRegistrations])
 
   if (loading) return <LoadingSpinner message="Loading registrations..." fullScreen />
 

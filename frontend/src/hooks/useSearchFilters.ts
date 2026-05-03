@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 export interface FilterState {
@@ -12,16 +12,15 @@ export function useSearchFilters(defaults: FilterState): {
   clear: () => void
 } {
   const [searchParams, setSearchParams] = useSearchParams()
-  const initial: FilterState = useMemo(() => {
+
+  const [state, setState] = useState<FilterState>(() => {
     const out: FilterState = { ...defaults }
     for (const k of Object.keys(defaults)) {
       const v = searchParams.get(k)
       if (v !== null) out[k] = v
     }
     return out
-  }, [])
-
-  const [state, setState] = useState<FilterState>(initial)
+  })
   const [debouncedSearch, setDebouncedSearch] = useState(state.search)
 
   useEffect(() => {
@@ -35,7 +34,7 @@ export function useSearchFilters(defaults: FilterState): {
       if (v) next.set(k, v)
     })
     setSearchParams(next, { replace: true })
-  }, [state, debouncedSearch])
+  }, [state, debouncedSearch, setSearchParams])
 
   return {
     state: { ...state, search: debouncedSearch },

@@ -120,19 +120,11 @@ export interface AuthContextType {
   isAuthenticated: boolean
 }
 
-export interface BulkActionRequest {
-  ids: string[]
-}
-
 export interface BulkConflict {
   registrationId: string
   positionName: string
   currentApprovedCount: number
   capacity: number
-}
-
-export interface BulkConflictResponse {
-  conflicts: BulkConflict[]
 }
 
 export const LiveWorkerStatus = {

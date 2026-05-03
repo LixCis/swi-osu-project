@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import api from '../api/axios'
 import { LoadingSpinner } from '../components/LoadingSpinner'
 import { EmptyState } from '../components/EmptyState'
 import { formatHours, formatDateTime } from '../utils/formatting'
+import { getErrorMessage } from '../utils/errors'
 import type { TimeRecord } from '../types'
 
 export function MyTimePage() {
@@ -10,14 +11,10 @@ export function MyTimePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    loadTimeRecords()
-  }, [])
-
-  const loadTimeRecords = async () => {
+  const loadTimeRecords = useCallback(async () => {
     try {
-      const response = await api.get('/time/my')
-      const records = response.data as TimeRecord[]
+      const response = await api.get<TimeRecord[]>('/time/my')
+      const records = response.data
       records.sort((a, b) => new Date(b.clockIn).getTime() - new Date(a.clockIn).getTime())
       records.forEach((record) => {
         if (record.breaks && record.breaks.length > 0) {
@@ -26,12 +23,16 @@ export function MyTimePage() {
       })
       setTimeRecords(records)
       setError(null)
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load hours')
+    } catch (err) {
+      setError(getErrorMessage(err, 'Failed to load hours'))
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    void loadTimeRecords()
+  }, [loadTimeRecords])
 
   if (loading) return <LoadingSpinner message="Loading your hours..." fullScreen />
 

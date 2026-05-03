@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, type ChangeEvent, type SubmitEvent } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/useAuth'
+import { getErrorMessage } from '../utils/errors'
 
 export function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -16,12 +17,12 @@ export function RegisterPage() {
   const { register } = useAuth()
   const navigate = useNavigate()
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError(null)
     setLoading(true)
@@ -36,8 +37,8 @@ export function RegisterPage() {
         formData.dateOfBirth
       )
       navigate('/')
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Registration failed')
+    } catch (err) {
+      setError(getErrorMessage(err, 'Registration failed'))
     } finally {
       setLoading(false)
     }

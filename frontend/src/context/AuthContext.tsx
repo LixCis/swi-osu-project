@@ -1,29 +1,28 @@
-import { createContext, useState, useContext, useEffect } from 'react'
+import { useState, type ReactNode } from 'react'
 import api from '../api/axios'
-import { LoadingSpinner } from '../components/LoadingSpinner'
-import type { User, AuthContextType } from '../types'
+import type { User } from '../types'
+import { AuthContext } from './auth-context'
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+function readStoredUser(): User | null {
+  const raw = localStorage.getItem('user')
+  if (!raw) return null
+  try {
+    return JSON.parse(raw) as User
+  } catch {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    return null
+  }
+}
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [token, setToken] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+function readStoredToken(): string | null {
+  if (!localStorage.getItem('user')) return null
+  return localStorage.getItem('token')
+}
 
-  useEffect(() => {
-    const storedToken = localStorage.getItem('token')
-    const storedUser = localStorage.getItem('user')
-    if (storedToken && storedUser) {
-      try {
-        setToken(storedToken)
-        setUser(JSON.parse(storedUser))
-      } catch {
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-      }
-    }
-    setIsLoading(false)
-  }, [])
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(() => readStoredUser())
+  const [token, setToken] = useState<string | null>(() => readStoredToken())
 
   const login = async (email: string, password: string) => {
     const response = await api.post('/auth/login', { email, password })
@@ -64,10 +63,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('user')
   }
 
-  if (isLoading) {
-    return <LoadingSpinner fullScreen />
-  }
-
   return (
     <AuthContext.Provider
       value={{
@@ -82,12 +77,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       {children}
     </AuthContext.Provider>
   )
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error('useAuth must be used within AuthProvider')
-  }
-  return context
 }

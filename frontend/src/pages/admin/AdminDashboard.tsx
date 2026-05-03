@@ -1,63 +1,60 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import api from '../../api/axios'
 import { LoadingSpinner } from '../../components/LoadingSpinner'
 import { EmptyState } from '../../components/EmptyState'
 import { formatHours, formatDateTime } from '../../utils/formatting'
+import { getErrorMessage } from '../../utils/errors'
 import type { DashboardData, WorkerSummary, TimeRecordAdmin } from '../../types'
 import { useLiveDashboard } from '../../hooks/useLiveDashboard'
+import { useMyEvents } from '../../hooks/useMyEvents'
 import { LiveKanban } from '../../components/LiveKanban'
 
 export function AdminDashboard() {
-  const [events, setEvents] = useState<any[]>([])
-  const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
+  const { events, selectedEventId, setSelectedEventId, loading, error, setError } = useMyEvents()
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [expandedWorker, setExpandedWorker] = useState<string | null>(null)
 
-  useEffect(() => {
-    loadEvents()
-  }, [])
-
-  const loadEvents = async () => {
+  const loadDashboardData = useCallback(async () => {
+    if (!selectedEventId) return
     try {
-      const response = await api.get('/events/my')
-      setEvents(response.data)
-      if (response.data.length > 0) {
-        setSelectedEventId(response.data[0].id)
-      }
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load events')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const loadDashboardData = async () => {
-    setError(null)
-    try {
-      const response = await api.get(`/dashboard/event/${selectedEventId}`)
+      const response = await api.get<DashboardData>(`/dashboard/event/${selectedEventId}`)
       setDashboardData(response.data)
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load dashboard data')
+      setError(null)
+    } catch (err) {
+      setError(getErrorMessage(err, 'Failed to load dashboard data'))
     }
-  }
+  }, [selectedEventId, setError])
 
   const { workers: liveWorkers, connected, setInitial } = useLiveDashboard(selectedEventId, loadDashboardData)
 
+  const [prevSelectedId, setPrevSelectedId] = useState(selectedEventId)
+  if (prevSelectedId !== selectedEventId) {
+    setPrevSelectedId(selectedEventId)
+    setExpandedWorker(null)
+    setDashboardData(null)
+  }
+
   useEffect(() => {
-    if (selectedEventId) {
-      setExpandedWorker(null)
-      setDashboardData(null)
-      loadDashboardData()
-    }
-  }, [selectedEventId])
+    if (!selectedEventId) return
+    let cancelled = false
+    api.get<DashboardData>(`/dashboard/event/${selectedEventId}`)
+      .then((res) => {
+        if (cancelled) return
+        setDashboardData(res.data)
+        setError(null)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setError(getErrorMessage(err, 'Failed to load dashboard data'))
+      })
+    return () => { cancelled = true }
+  }, [selectedEventId, setError])
 
   useEffect(() => {
     if (dashboardData?.liveWorkers) {
       setInitial(dashboardData.liveWorkers)
     }
-  }, [dashboardData])
+  }, [dashboardData, setInitial])
 
   if (loading) return <LoadingSpinner message="Loading dashboard..." fullScreen />
 

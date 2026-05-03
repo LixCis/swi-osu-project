@@ -1,13 +1,16 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { AxiosError } from 'axios'
 import api from '../../api/axios'
 import { LoadingSpinner } from '../../components/LoadingSpinner'
 import { EmptyState } from '../../components/EmptyState'
 import { SearchFilter } from '../../components/SearchFilter'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useSearchFilters } from '../../hooks/useSearchFilters'
+import { useMyEvents } from '../../hooks/useMyEvents'
 import { formatStatus, formatDate, formatDateOnly } from '../../utils/formatting'
+import { getErrorMessage } from '../../utils/errors'
 import { RegistrationStatus } from '../../types'
-import type { Event, BulkConflict } from '../../types'
+import type { BulkConflict } from '../../types'
 
 interface RegistrationDetail {
   id: string
@@ -25,12 +28,21 @@ interface RegistrationDetail {
   positionEndTime?: string
 }
 
+interface BulkConflictResponseBody {
+  conflicts: BulkConflict[]
+}
+
+function extractConflicts(err: unknown): BulkConflict[] | null {
+  if (err instanceof AxiosError && err.response?.status === 400) {
+    const data = err.response.data as Partial<BulkConflictResponseBody> | undefined
+    if (data?.conflicts) return data.conflicts
+  }
+  return null
+}
+
 export function ManageRegistrationsPage() {
-  const [events, setEvents] = useState<Event[]>([])
-  const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
+  const { events, selectedEventId, setSelectedEventId, loading, error, setError } = useMyEvents()
   const [registrations, setRegistrations] = useState<RegistrationDetail[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [conflicts, setConflicts] = useState<BulkConflict[] | null>(null)
   const [bulkLoading, setBulkLoading] = useState(false)
@@ -38,29 +50,24 @@ export function ManageRegistrationsPage() {
   const { state, setField, clear } = useSearchFilters({ search: '', status: '' })
   const selectAllRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    loadEvents()
-  }, [])
-
-  const loadEvents = async () => {
+  const loadRegistrations = useCallback(async () => {
+    if (!selectedEventId) return
+    setError(null)
     try {
-      const response = await api.get('/events/my')
-      setEvents(response.data)
-      if (response.data.length > 0) {
-        setSelectedEventId(response.data[0].id)
-      }
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load events')
-    } finally {
-      setLoading(false)
+      const params: Record<string, string> = {}
+      if (state.search) params.search = state.search
+      if (state.status) params.status = state.status
+      const response = await api.get<RegistrationDetail[]>(`/events/${selectedEventId}/registrations`, { params })
+      const sorted = [...response.data].sort((a, b) => new Date(b.positionDate || '').getTime() - new Date(a.positionDate || '').getTime())
+      setRegistrations(sorted)
+    } catch (err) {
+      setError(getErrorMessage(err, 'Failed to load registrations'))
     }
-  }
+  }, [selectedEventId, state.search, state.status, setError])
 
   useEffect(() => {
-    if (selectedEventId) {
-      loadRegistrations()
-    }
-  }, [selectedEventId, state.search, state.status])
+    void loadRegistrations()
+  }, [loadRegistrations])
 
   useEffect(() => {
     if (selectAllRef.current) {
@@ -68,26 +75,12 @@ export function ManageRegistrationsPage() {
     }
   }, [selectedIds, registrations])
 
-  const loadRegistrations = async () => {
-    setError(null)
-    try {
-      const params: Record<string, string> = {}
-      if (state.search) params.search = state.search
-      if (state.status) params.status = state.status
-      const response = await api.get(`/events/${selectedEventId}/registrations`, { params })
-      const sorted = [...response.data].sort((a, b) => new Date(b.positionDate || '').getTime() - new Date(a.positionDate || '').getTime())
-      setRegistrations(sorted)
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load registrations')
-    }
-  }
-
   const handleApprove = async (registrationId: string) => {
     try {
       await api.put(`/registrations/${registrationId}/approve`)
-      loadRegistrations()
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to approve registration')
+      await loadRegistrations()
+    } catch (err) {
+      setError(getErrorMessage(err, 'Failed to approve registration'))
     }
   }
 
@@ -104,9 +97,9 @@ export function ManageRegistrationsPage() {
       action: async () => {
         try {
           await api.put(`/registrations/${registrationId}/reject`)
-          loadRegistrations()
-        } catch (err: any) {
-          setError(err.response?.data?.message || 'Failed to update registration')
+          await loadRegistrations()
+        } catch (err) {
+          setError(getErrorMessage(err, 'Failed to update registration'))
         }
       }
     })
@@ -121,9 +114,9 @@ export function ManageRegistrationsPage() {
       action: async () => {
         try {
           await api.delete(`/registrations/${registrationId}`)
-          loadRegistrations()
-        } catch (err: any) {
-          setError(err.response?.data?.message || 'Failed to delete registration')
+          await loadRegistrations()
+        } catch (err) {
+          setError(getErrorMessage(err, 'Failed to delete registration'))
         }
       }
     })
@@ -142,11 +135,12 @@ export function ManageRegistrationsPage() {
           await api.post('/registrations/bulk-approve', { ids })
           await loadRegistrations()
           setSelectedIds(new Set())
-        } catch (e: any) {
-          if (e.response?.status === 400 && e.response?.data?.conflicts) {
-            setConflicts(e.response.data.conflicts)
+        } catch (err) {
+          const c = extractConflicts(err)
+          if (c) {
+            setConflicts(c)
           } else {
-            setError(e.response?.data?.message || 'Bulk approve failed')
+            setError(getErrorMessage(err, 'Bulk approve failed'))
             setSelectedIds(new Set())
           }
         } finally {
@@ -170,8 +164,8 @@ export function ManageRegistrationsPage() {
           await api.post('/registrations/bulk-reject', { ids })
           await loadRegistrations()
           setSelectedIds(new Set())
-        } catch (e: any) {
-          setError(e.response?.data?.message || 'Bulk reject failed')
+        } catch (err) {
+          setError(getErrorMessage(err, 'Bulk reject failed'))
           setSelectedIds(new Set())
         } finally {
           setBulkLoading(false)
@@ -194,8 +188,8 @@ export function ManageRegistrationsPage() {
           await api.post('/registrations/bulk-delete', { ids })
           await loadRegistrations()
           setSelectedIds(new Set())
-        } catch (e: any) {
-          setError(e.response?.data?.message || 'Bulk delete failed')
+        } catch (err) {
+          setError(getErrorMessage(err, 'Bulk delete failed'))
           setSelectedIds(new Set())
         } finally {
           setBulkLoading(false)
@@ -218,11 +212,12 @@ export function ManageRegistrationsPage() {
           await api.post('/registrations/bulk-approve', { ids: pendingIds })
           await loadRegistrations()
           setSelectedIds(new Set())
-        } catch (e: any) {
-          if (e.response?.status === 400 && e.response?.data?.conflicts) {
-            setConflicts(e.response.data.conflicts)
+        } catch (err) {
+          const c = extractConflicts(err)
+          if (c) {
+            setConflicts(c)
           } else {
-            setError(e.response?.data?.message || 'Approve all pending failed')
+            setError(getErrorMessage(err, 'Approve all pending failed'))
             setSelectedIds(new Set())
           }
         }

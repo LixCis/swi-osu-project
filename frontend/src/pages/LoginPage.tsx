@@ -1,6 +1,11 @@
-import { useState } from 'react'
+import { useState, type SubmitEvent } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/useAuth'
+import { getErrorMessage } from '../utils/errors'
+
+interface LocationState {
+  from?: { pathname?: string }
+}
 
 export function LoginPage() {
   const [email, setEmail] = useState('')
@@ -11,17 +16,17 @@ export function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError(null)
     setLoading(true)
 
     try {
       await login(email, password)
-      const from = (location.state as any)?.from?.pathname || '/'
+      const from = (location.state as LocationState | null)?.from?.pathname || '/'
       navigate(from)
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Login failed')
+    } catch (err) {
+      setError(getErrorMessage(err, 'Login failed'))
     } finally {
       setLoading(false)
     }

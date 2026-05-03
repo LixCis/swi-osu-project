@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import api from '../api/axios'
 import { parseUtc } from '../utils/formatting'
+import { computeWindowStatus, type ShiftWindowStatus } from '../utils/shiftWindow'
+import { getErrorMessage } from '../utils/errors'
 import { ConfirmDialog } from './ConfirmDialog'
 import type { TimeRecord } from '../types'
 
@@ -17,18 +19,6 @@ function formatElapsed(seconds: number): string {
   const m = Math.floor((seconds % 3600) / 60)
   const s = Math.floor(seconds % 60)
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-}
-
-function computeWindowStatus(positionDate?: string, positionStartTime?: string, positionEndTime?: string): 'before' | 'open' | 'after' {
-  if (!positionDate || !positionStartTime || !positionEndTime) return 'open'
-  const windowOpen = new Date(`${positionDate}T${positionStartTime}Z`)
-  windowOpen.setHours(windowOpen.getHours() - 3)
-  const windowClose = new Date(`${positionDate}T${positionEndTime}Z`)
-  windowClose.setHours(windowClose.getHours() + 3)
-  const now = new Date()
-  if (now.getTime() < windowOpen.getTime()) return 'before'
-  if (now.getTime() > windowClose.getTime()) return 'after'
-  return 'open'
 }
 
 function calcWorkSeconds(record: TimeRecord): number {
@@ -73,7 +63,9 @@ export function TimeTracker({ registrationId, onStateChange, positionDate, posit
   const [breakElapsed, setBreakElapsed] = useState(0)
   const [totalBreakSeconds, setTotalBreakSeconds] = useState(0)
   const [confirmOpen, setConfirmOpen] = useState(false)
-  const [windowStatus, setWindowStatus] = useState<'before' | 'open' | 'after'>(computeWindowStatus(positionDate, positionStartTime, positionEndTime))
+  const [windowStatus, setWindowStatus] = useState<ShiftWindowStatus>(() =>
+    computeWindowStatus(positionDate, positionStartTime, positionEndTime)
+  )
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const windowStatusIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -84,9 +76,23 @@ export function TimeTracker({ registrationId, onStateChange, positionDate, posit
     setTotalBreakSeconds(calcTotalBreakSeconds(record))
   }, [record])
 
-  useEffect(() => {
-    loadState()
+  const loadState = useCallback(async () => {
+    try {
+      const response = await api.get<TimeRecord[]>('/time/my')
+      const matching = response.data.filter((r) =>
+        String(r.registrationId) === String(registrationId)
+      )
+      const active = matching.find((r) => !r.clockOut)
+      const last = matching.length > 0 ? matching[matching.length - 1] : null
+      setRecord(active || last)
+    } catch {
+      setError('Failed to load time tracking state')
+    }
   }, [registrationId])
+
+  useEffect(() => {
+    void loadState()
+  }, [loadState])
 
   useEffect(() => {
     if (intervalRef.current) {
@@ -128,20 +134,6 @@ export function TimeTracker({ registrationId, onStateChange, positionDate, posit
     }
   }, [positionDate, positionStartTime, positionEndTime])
 
-  const loadState = async () => {
-    try {
-      const response = await api.get('/time/my')
-      const matching = response.data.filter((r: TimeRecord) =>
-        String(r.registrationId) === String(registrationId)
-      )
-      const active = matching.find((r: TimeRecord) => !r.clockOut)
-      const last = matching.length > 0 ? matching[matching.length - 1] : null
-      setRecord(active || last)
-    } catch {
-      setError('Failed to load time tracking state')
-    }
-  }
-
   const isClocked = !!record?.clockIn && !record?.clockOut
   const onBreak = !!record?.onBreak
   const isDone = !!record?.clockOut
@@ -153,8 +145,8 @@ export function TimeTracker({ registrationId, onStateChange, positionDate, posit
       const response = await api.post(`/time/clock-in?registrationId=${registrationId}`)
       setRecord(response.data)
       onStateChange?.()
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Clock-in failed')
+    } catch (err) {
+      setError(getErrorMessage(err, 'Clock-in failed'))
     } finally {
       setLoading(false)
     }
@@ -167,8 +159,8 @@ export function TimeTracker({ registrationId, onStateChange, positionDate, posit
       const response = await api.post(`/time/break-start?recordId=${record?.id}`)
       setRecord(response.data)
       onStateChange?.()
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to start break')
+    } catch (err) {
+      setError(getErrorMessage(err, 'Failed to start break'))
     } finally {
       setLoading(false)
     }
@@ -181,14 +173,14 @@ export function TimeTracker({ registrationId, onStateChange, positionDate, posit
       const response = await api.post(`/time/break-end?recordId=${record?.id}`)
       setRecord(response.data)
       onStateChange?.()
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to end break')
+    } catch (err) {
+      setError(getErrorMessage(err, 'Failed to end break'))
     } finally {
       setLoading(false)
     }
   }
 
-  const handleClockOut = async () => {
+  const handleClockOut = () => {
     setConfirmOpen(true)
   }
 
@@ -200,8 +192,8 @@ export function TimeTracker({ registrationId, onStateChange, positionDate, posit
       const response = await api.post(`/time/clock-out?recordId=${record?.id}`)
       setRecord(response.data)
       onStateChange?.()
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to end shift')
+    } catch (err) {
+      setError(getErrorMessage(err, 'Failed to end shift'))
     } finally {
       setLoading(false)
     }
