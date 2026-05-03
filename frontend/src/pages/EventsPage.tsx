@@ -40,6 +40,8 @@ export function EventsPage() {
 
   if (loading) return <LoadingSpinner message="Loading events..." fullScreen />
 
+  const today = new Date().toISOString().split('T')[0]
+
   const quickFilters = [
     { key: 'upcoming', label: 'Upcoming', field: 'upcoming', value: 'true' },
     { key: 'past', label: 'Past', field: 'past', value: 'true' }
@@ -87,7 +89,12 @@ export function EventsPage() {
               key={event.id}
               className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition"
             >
-              <h2 className="text-xl font-bold mb-2">{event.name}</h2>
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <h2 className="text-xl font-bold">{event.name}</h2>
+                {event.endDate < today && (
+                  <span className="shrink-0 text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">Past</span>
+                )}
+              </div>
               <p className="text-gray-600 mb-1">📍 {event.location}</p>
               <p className="text-gray-600 mb-4">
                 📅 {event.startDate} – {event.endDate}

@@ -14,6 +14,10 @@ interface PositionWithRegistration extends Position {
   approvedCount?: number
 }
 
+function isPositionPast(pos: Position): boolean {
+  return new Date(`${pos.date}T${pos.endTime}Z`).getTime() < Date.now()
+}
+
 export function EventDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -112,6 +116,8 @@ export function EventDetailPage() {
     [RegistrationStatus.REJECTED]: 'bg-red-100 text-red-800'
   }
 
+  const allPositionsPast = positions.length > 0 && positions.every(isPositionPast)
+
   return (
     <div className="max-w-4xl mx-auto">
       <button
@@ -141,6 +147,12 @@ export function EventDetailPage() {
         </div>
       )}
 
+      {allPositionsPast && (
+        <div className="mb-4 p-4 bg-gray-100 text-gray-700 rounded">
+          This event has ended.
+        </div>
+      )}
+
       <div>
         <h2 className="text-2xl font-bold mb-6">Available Positions</h2>
         {positions.length === 0 ? (
@@ -161,6 +173,10 @@ export function EventDetailPage() {
                 {isAdmin ? null : position.registration ? (
                   <span className={`block w-full text-center px-3 py-2 rounded font-medium ${statusColors[position.registration.status]}`}>
                     {formatStatus(position.registration.status)}
+                  </span>
+                ) : isPositionPast(position) ? (
+                  <span className="block w-full text-center px-3 py-2 rounded font-medium bg-gray-100 text-gray-600">
+                    Registration closed — past
                   </span>
                 ) : (
                   <button

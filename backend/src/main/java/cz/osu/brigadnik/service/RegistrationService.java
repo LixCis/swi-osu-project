@@ -21,8 +21,10 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -59,6 +61,12 @@ public class RegistrationService {
 
         Position position = positionRepository.findById(dto.getPositionId())
                 .orElseThrow(() -> new ResourceNotFoundException("Position not found"));
+
+        Instant positionEnd = LocalDateTime.of(position.getDate(), position.getEndTime())
+                .toInstant(ZoneOffset.UTC);
+        if (positionEnd.isBefore(Instant.now())) {
+            throw new IllegalArgumentException("Cannot register for a position that has already ended");
+        }
 
         Registration registration = Registration.builder()
                 .worker(worker)
