@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Client } from '@stomp/stompjs'
 import SockJS from 'sockjs-client'
 import type { LiveWorkerDto } from '../types'
@@ -21,15 +21,19 @@ export function useLiveDashboard(eventId: string | null, onUpdate?: () => void):
     setWorkers(new Map())
   }
 
-  const setInitial = (initial: LiveWorkerDto[]) => {
+  const setInitial = useCallback((initial: LiveWorkerDto[]) => {
     setWorkers((prev) => {
+      let changed = false
       const m = new Map(prev)
       initial.forEach((w) => {
-        if (!m.has(w.workerId)) m.set(w.workerId, w)
+        if (!m.has(w.workerId)) {
+          m.set(w.workerId, w)
+          changed = true
+        }
       })
-      return m
+      return changed ? m : prev
     })
-  }
+  }, [])
 
   useEffect(() => {
     if (!eventId) return
