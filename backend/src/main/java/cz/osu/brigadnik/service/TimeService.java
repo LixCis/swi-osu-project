@@ -1,6 +1,5 @@
 package cz.osu.brigadnik.service;
 
-import cz.osu.brigadnik.dto.BreakDto;
 import cz.osu.brigadnik.dto.LiveWorkerDto;
 import cz.osu.brigadnik.dto.TimeRecordAdminDto;
 import cz.osu.brigadnik.dto.TimeRecordDto;
@@ -8,7 +7,6 @@ import cz.osu.brigadnik.entity.Break;
 import cz.osu.brigadnik.entity.Registration;
 import cz.osu.brigadnik.entity.TimeRecord;
 import cz.osu.brigadnik.entity.User;
-import cz.osu.brigadnik.enums.LiveWorkerStatus;
 import cz.osu.brigadnik.enums.RegistrationStatus;
 import cz.osu.brigadnik.exception.ResourceNotFoundException;
 import cz.osu.brigadnik.repository.BreakRepository;
@@ -23,7 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -72,41 +69,7 @@ public class TimeService {
 
     private void broadcastLive(Registration registration) {
         Long eventId = registration.getPosition().getEvent().getId();
-        List<TimeRecord> records = timeRecordRepository.findByRegistrationId(registration.getId());
-        LiveWorkerStatus status = dashboardService.computeStatus(registration, records, breakRepository);
-        LocalDateTime since = dashboardService.computeSince(status, records);
-        long completedBreakSeconds = 0;
-        long previousSessionSeconds = 0;
-        BigDecimal workedHours = null;
-
-        previousSessionSeconds = records.stream()
-                .filter(rec -> rec.getClockOut() != null && rec.getComputedHours() != null)
-                .mapToLong(rec -> rec.getComputedHours().multiply(java.math.BigDecimal.valueOf(3600)).longValue())
-                .sum();
-
-        if (!records.isEmpty()) {
-            TimeRecord latest = records.stream().max(Comparator.comparing(TimeRecord::getClockIn)).orElse(records.get(0));
-            if (status == LiveWorkerStatus.WORKING || status == LiveWorkerStatus.ON_BREAK) {
-                completedBreakSeconds = dashboardService.computeCompletedBreakSeconds(latest);
-            } else if (status == LiveWorkerStatus.FINISHED) {
-                workedHours = records.stream()
-                        .filter(rec -> rec.getClockOut() != null && rec.getComputedHours() != null)
-                        .map(TimeRecord::getComputedHours)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add);
-            }
-        }
-        LiveWorkerDto dto = LiveWorkerDto.builder()
-                .workerId(registration.getWorker().getId())
-                .workerName(registration.getWorker().getFirstName() + " " + registration.getWorker().getLastName())
-                .positionName(registration.getPosition().getName())
-                .status(status)
-                .since(since)
-                .eventId(eventId)
-                .registrationId(registration.getId())
-                .completedBreakSeconds(completedBreakSeconds)
-                .previousSessionSeconds(previousSessionSeconds)
-                .workedHours(workedHours)
-                .build();
+        LiveWorkerDto dto = dashboardService.buildLiveWorkerDto(registration);
         messagingTemplate.convertAndSend("/topic/event/" + eventId + "/live", dto);
     }
 
@@ -283,16 +246,6 @@ public class TimeService {
         return BigDecimal.valueOf(workSeconds).divide(BigDecimal.valueOf(3600), 6, java.math.RoundingMode.HALF_UP);
     }
 
-    private List<BreakDto> getBreakDtos(Long timeRecordId) {
-        return breakRepository.findByTimeRecordId(timeRecordId).stream()
-                .map(b -> BreakDto.builder()
-                        .id(b.getId())
-                        .startTime(b.getStartTime())
-                        .endTime(b.getEndTime())
-                        .build())
-                .collect(Collectors.toList());
-    }
-
     private TimeRecordDto entityToDto(TimeRecord timeRecord) {
         boolean onBreak = breakRepository.findByTimeRecordIdAndEndTimeIsNull(timeRecord.getId()).isPresent();
         String workerName = timeRecord.getWorker().getFirstName() + " " + timeRecord.getWorker().getLastName();
@@ -308,7 +261,7 @@ public class TimeService {
                 .clockOut(timeRecord.getClockOut())
                 .computedHours(timeRecord.getComputedHours())
                 .onBreak(onBreak)
-                .breaks(getBreakDtos(timeRecord.getId()))
+                .breaks(dashboardService.getBreakDtoList(timeRecord.getId()))
                 .build();
     }
 
@@ -333,7 +286,7 @@ public class TimeService {
                 .computedHours(timeRecord.getComputedHours())
                 .hourlyRate(hourlyRate)
                 .totalAmount(totalAmount)
-                .breaks(getBreakDtos(timeRecord.getId()))
+                .breaks(dashboardService.getBreakDtoList(timeRecord.getId()))
                 .build();
     }
 

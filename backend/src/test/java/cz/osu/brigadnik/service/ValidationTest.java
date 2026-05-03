@@ -8,9 +8,8 @@ import cz.osu.brigadnik.entity.User;
 import cz.osu.brigadnik.enums.RegistrationStatus;
 import cz.osu.brigadnik.enums.Role;
 import cz.osu.brigadnik.repository.BreakRepository;
-import cz.osu.brigadnik.repository.RegistrationRepository;
 import cz.osu.brigadnik.repository.TimeRecordRepository;
-import cz.osu.brigadnik.repository.UserRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -21,9 +20,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.Collections;
 
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
@@ -35,24 +32,19 @@ class ValidationTest {
     @Mock
     private BreakRepository breakRepository;
 
-    @Mock
-    private UserRepository userRepository;
-
-    @Mock
-    private RegistrationRepository registrationRepository;
-
-    @Mock
-    private SimpMessagingTemplate messagingTemplate;
-
-    @Mock
-    private DashboardService dashboardService;
-
     @InjectMocks
     private TimeService timeService;
 
+    private AutoCloseable mocks;
+
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
+        mocks = MockitoAnnotations.openMocks(this);
+    }
+
+    @AfterEach
+    void tearDown() throws Exception {
+        mocks.close();
     }
 
     @Test
@@ -109,9 +101,7 @@ class ValidationTest {
 
         when(timeRecordRepository.findById(1L)).thenReturn(java.util.Optional.of(timeRecord));
 
-        assertThrows(IllegalArgumentException.class, () -> {
-            timeService.clockOut(1L, 1L);
-        });
+        assertThrows(IllegalArgumentException.class, () -> timeService.clockOut(1L, 1L));
     }
 
     @Test
@@ -169,9 +159,7 @@ class ValidationTest {
         when(timeRecordRepository.findById(1L)).thenReturn(java.util.Optional.of(timeRecord));
         when(breakRepository.findByTimeRecordIdAndEndTimeIsNull(1L)).thenReturn(java.util.Optional.empty());
 
-        assertThrows(IllegalArgumentException.class, () -> {
-            timeService.startBreak(1L, 1L);
-        });
+        assertThrows(IllegalArgumentException.class, () -> timeService.startBreak(1L, 1L));
     }
 
     @Test
@@ -235,8 +223,6 @@ class ValidationTest {
         when(timeRecordRepository.findById(1L)).thenReturn(java.util.Optional.of(timeRecord));
         when(breakRepository.findByTimeRecordIdAndEndTimeIsNull(1L)).thenReturn(java.util.Optional.of(openBreak));
 
-        assertThrows(IllegalArgumentException.class, () -> {
-            timeService.startBreak(1L, 1L);
-        });
+        assertThrows(IllegalArgumentException.class, () -> timeService.startBreak(1L, 1L));
     }
 }

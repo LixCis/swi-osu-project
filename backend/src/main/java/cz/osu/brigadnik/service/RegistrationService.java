@@ -27,7 +27,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -84,7 +83,7 @@ public class RegistrationService {
                     return aStart.compareTo(bStart);
                 })
                 .map(this::entityToDto)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     public RegistrationDto approveRegistration(Long registrationId, Long adminId) {
@@ -115,7 +114,10 @@ public class RegistrationService {
                 .orElseThrow(() -> new ResourceNotFoundException("Registration not found"));
 
         verifyAdminOwnership(registration, adminId);
+        cascadeDeleteRegistration(registrationId);
+    }
 
+    public void cascadeDeleteRegistration(Long registrationId) {
         List<cz.osu.brigadnik.entity.TimeRecord> timeRecords = timeRecordRepository.findByRegistrationId(registrationId);
         for (cz.osu.brigadnik.entity.TimeRecord tr : timeRecords) {
             breakRepository.deleteAll(breakRepository.findByTimeRecordId(tr.getId()));
@@ -164,7 +166,7 @@ public class RegistrationService {
                 r.setStatus(RegistrationStatus.APPROVED);
             }
         }
-        return registrationRepository.saveAll(registrations).stream().map(this::entityToDto).collect(Collectors.toList());
+        return registrationRepository.saveAll(registrations).stream().map(this::entityToDto).toList();
     }
 
     public List<RegistrationDto> bulkReject(List<Long> ids, Long adminId) {
@@ -176,7 +178,7 @@ public class RegistrationService {
             verifyAdminOwnership(r, adminId);
             r.setStatus(RegistrationStatus.REJECTED);
         }
-        return registrationRepository.saveAll(registrations).stream().map(this::entityToDto).collect(Collectors.toList());
+        return registrationRepository.saveAll(registrations).stream().map(this::entityToDto).toList();
     }
 
     public void bulkDelete(List<Long> ids, Long adminId) {
@@ -197,7 +199,7 @@ public class RegistrationService {
         Specification<Registration> spec = Specification.where(RegistrationSpecifications.forWorker(workerId))
                 .and(RegistrationSpecifications.hasStatus(status))
                 .and(RegistrationSpecifications.forEvent(eventId));
-        return registrationRepository.findAll(spec).stream().map(this::entityToDto).collect(Collectors.toList());
+        return registrationRepository.findAll(spec).stream().map(this::entityToDto).toList();
     }
 
     @Transactional(readOnly = true)
@@ -211,7 +213,7 @@ public class RegistrationService {
                 .and(RegistrationSpecifications.hasStatus(status))
                 .and(RegistrationSpecifications.positionDateFrom(dateFrom))
                 .and(RegistrationSpecifications.positionDateTo(dateTo));
-        return registrationRepository.findAll(spec).stream().map(this::entityToDto).collect(Collectors.toList());
+        return registrationRepository.findAll(spec).stream().map(this::entityToDto).toList();
     }
 
     private void verifyAdminOwnership(Registration r, Long adminId) {
@@ -225,7 +227,7 @@ public class RegistrationService {
         List<Registration> approvedRegistrations = registrationRepository.findByPositionId(position.getId())
                 .stream()
                 .filter(r -> r.getStatus() == RegistrationStatus.APPROVED)
-                .collect(Collectors.toList());
+                .toList();
 
         if (approvedRegistrations.size() >= position.getCapacity()) {
             throw new IllegalArgumentException("Position capacity exceeded");

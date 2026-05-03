@@ -5,7 +5,6 @@ import cz.osu.brigadnik.dto.LoginRequest;
 import cz.osu.brigadnik.dto.RegisterRequest;
 import cz.osu.brigadnik.entity.User;
 import cz.osu.brigadnik.enums.Role;
-import cz.osu.brigadnik.exception.ResourceNotFoundException;
 import cz.osu.brigadnik.repository.UserRepository;
 import cz.osu.brigadnik.security.JwtUtil;
 import org.springframework.security.authentication.BadCredentialsException;

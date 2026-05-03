@@ -7,12 +7,8 @@ import cz.osu.brigadnik.entity.Registration;
 import cz.osu.brigadnik.entity.User;
 import cz.osu.brigadnik.enums.RegistrationStatus;
 import cz.osu.brigadnik.enums.Role;
-import cz.osu.brigadnik.repository.BreakRepository;
-import cz.osu.brigadnik.repository.EventRepository;
-import cz.osu.brigadnik.repository.PositionRepository;
 import cz.osu.brigadnik.repository.RegistrationRepository;
-import cz.osu.brigadnik.repository.TimeRecordRepository;
-import cz.osu.brigadnik.repository.UserRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -31,16 +27,16 @@ import static org.mockito.Mockito.when;
 class UpcomingRegistrationsTest {
 
     @Mock private RegistrationRepository registrationRepository;
-    @Mock private UserRepository userRepository;
-    @Mock private PositionRepository positionRepository;
-    @Mock private EventRepository eventRepository;
-    @Mock private TimeRecordRepository timeRecordRepository;
-    @Mock private BreakRepository breakRepository;
 
     @InjectMocks private RegistrationService registrationService;
 
+    private AutoCloseable mocks;
+
     @BeforeEach
-    void setUp() { MockitoAnnotations.openMocks(this); }
+    void setUp() { mocks = MockitoAnnotations.openMocks(this); }
+
+    @AfterEach
+    void tearDown() throws Exception { mocks.close(); }
 
     @Test
     void returnsOnlyApprovedFutureRegistrationsSortedByStart() {

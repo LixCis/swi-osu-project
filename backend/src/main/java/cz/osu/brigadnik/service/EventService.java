@@ -8,9 +8,7 @@ import cz.osu.brigadnik.repository.EventRepository;
 import cz.osu.brigadnik.repository.EventSpecifications;
 import cz.osu.brigadnik.repository.PositionRepository;
 import cz.osu.brigadnik.repository.RegistrationRepository;
-import cz.osu.brigadnik.repository.TimeRecordRepository;
 import cz.osu.brigadnik.repository.UserRepository;
-import cz.osu.brigadnik.repository.BreakRepository;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -18,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -28,34 +25,17 @@ public class EventService {
     private final UserRepository userRepository;
     private final PositionRepository positionRepository;
     private final RegistrationRepository registrationRepository;
-    private final TimeRecordRepository timeRecordRepository;
-    private final BreakRepository breakRepository;
+    private final RegistrationService registrationService;
 
     public EventService(EventRepository eventRepository, UserRepository userRepository,
                         PositionRepository positionRepository,
                         RegistrationRepository registrationRepository,
-                        TimeRecordRepository timeRecordRepository,
-                        BreakRepository breakRepository) {
+                        RegistrationService registrationService) {
         this.eventRepository = eventRepository;
         this.userRepository = userRepository;
         this.positionRepository = positionRepository;
         this.registrationRepository = registrationRepository;
-        this.timeRecordRepository = timeRecordRepository;
-        this.breakRepository = breakRepository;
-    }
-
-    @Transactional(readOnly = true)
-    public List<EventDto> getAllEvents() {
-        return eventRepository.findAll().stream()
-                .map(this::entityToDto)
-                .collect(Collectors.toList());
-    }
-
-    @Transactional(readOnly = true)
-    public List<EventDto> getMyEvents(Long userId) {
-        return eventRepository.findByCreatedById(userId).stream()
-                .map(this::entityToDto)
-                .collect(Collectors.toList());
+        this.registrationService = registrationService;
     }
 
     @Transactional(readOnly = true)
@@ -120,20 +100,11 @@ public class EventService {
         for (cz.osu.brigadnik.entity.Position position : positions) {
             List<cz.osu.brigadnik.entity.Registration> registrations = registrationRepository.findByPositionId(position.getId());
             for (cz.osu.brigadnik.entity.Registration registration : registrations) {
-                deleteRegistrationCascade(registration.getId());
+                registrationService.cascadeDeleteRegistration(registration.getId());
             }
             positionRepository.deleteById(position.getId());
         }
         eventRepository.deleteById(id);
-    }
-
-    private void deleteRegistrationCascade(Long registrationId) {
-        List<cz.osu.brigadnik.entity.TimeRecord> timeRecords = timeRecordRepository.findByRegistrationId(registrationId);
-        for (cz.osu.brigadnik.entity.TimeRecord tr : timeRecords) {
-            breakRepository.deleteAll(breakRepository.findByTimeRecordId(tr.getId()));
-        }
-        timeRecordRepository.deleteAll(timeRecords);
-        registrationRepository.deleteById(registrationId);
     }
 
     @Transactional(readOnly = true)
@@ -141,7 +112,7 @@ public class EventService {
         Specification<Event> spec = Specification.where(EventSpecifications.nameOrLocationContains(search))
                 .and(EventSpecifications.startDateFrom(from))
                 .and(EventSpecifications.endDateTo(to));
-        return eventRepository.findAll(spec).stream().map(this::entityToDto).collect(Collectors.toList());
+        return eventRepository.findAll(spec).stream().map(this::entityToDto).toList();
     }
 
     @Transactional(readOnly = true)
@@ -150,7 +121,7 @@ public class EventService {
                 .and(EventSpecifications.nameOrLocationContains(search))
                 .and(EventSpecifications.startDateFrom(from))
                 .and(EventSpecifications.endDateTo(to));
-        return eventRepository.findAll(spec).stream().map(this::entityToDto).collect(Collectors.toList());
+        return eventRepository.findAll(spec).stream().map(this::entityToDto).toList();
     }
 
     private EventDto entityToDto(Event event) {

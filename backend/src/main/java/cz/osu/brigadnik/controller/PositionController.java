@@ -30,7 +30,7 @@ public class PositionController {
 
     @PostMapping("/events/{eventId}/positions")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<PositionDto> createPosition(@PathVariable Long eventId, @Valid @RequestBody PositionDto dto, Authentication auth) {
+    public ResponseEntity<PositionDto> createPosition(@PathVariable Long eventId, @Valid @RequestBody PositionDto dto) {
         Long userId = extractUserIdFromContext();
         PositionDto createdPosition = positionService.createPosition(eventId, dto, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdPosition);
@@ -38,7 +38,7 @@ public class PositionController {
 
     @PutMapping("/positions/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<PositionDto> updatePosition(@PathVariable Long id, @Valid @RequestBody PositionDto dto, Authentication auth) {
+    public ResponseEntity<PositionDto> updatePosition(@PathVariable Long id, @Valid @RequestBody PositionDto dto) {
         Long userId = extractUserIdFromContext();
         PositionDto updatedPosition = positionService.updatePosition(id, dto, userId);
         return ResponseEntity.ok(updatedPosition);
@@ -46,7 +46,7 @@ public class PositionController {
 
     @DeleteMapping("/positions/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> deletePosition(@PathVariable Long id, Authentication auth) {
+    public ResponseEntity<Void> deletePosition(@PathVariable Long id) {
         Long userId = extractUserIdFromContext();
         positionService.deletePosition(id, userId);
         return ResponseEntity.noContent().build();

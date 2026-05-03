@@ -4,17 +4,14 @@ import cz.osu.brigadnik.dto.PositionDto;
 import cz.osu.brigadnik.entity.Event;
 import cz.osu.brigadnik.entity.Position;
 import cz.osu.brigadnik.exception.ResourceNotFoundException;
-import cz.osu.brigadnik.repository.BreakRepository;
 import cz.osu.brigadnik.repository.EventRepository;
 import cz.osu.brigadnik.repository.PositionRepository;
 import cz.osu.brigadnik.repository.RegistrationRepository;
-import cz.osu.brigadnik.repository.TimeRecordRepository;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -23,25 +20,22 @@ public class PositionService {
     private final PositionRepository positionRepository;
     private final EventRepository eventRepository;
     private final RegistrationRepository registrationRepository;
-    private final TimeRecordRepository timeRecordRepository;
-    private final BreakRepository breakRepository;
+    private final RegistrationService registrationService;
 
     public PositionService(PositionRepository positionRepository, EventRepository eventRepository,
                           RegistrationRepository registrationRepository,
-                          TimeRecordRepository timeRecordRepository,
-                          BreakRepository breakRepository) {
+                          RegistrationService registrationService) {
         this.positionRepository = positionRepository;
         this.eventRepository = eventRepository;
         this.registrationRepository = registrationRepository;
-        this.timeRecordRepository = timeRecordRepository;
-        this.breakRepository = breakRepository;
+        this.registrationService = registrationService;
     }
 
     @Transactional(readOnly = true)
     public List<PositionDto> getPositionsByEventId(Long eventId) {
         return positionRepository.findByEventId(eventId).stream()
                 .map(this::entityToDto)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     public PositionDto createPosition(Long eventId, PositionDto dto, Long userId) {
@@ -112,18 +106,9 @@ public class PositionService {
 
         List<cz.osu.brigadnik.entity.Registration> registrations = registrationRepository.findByPositionId(id);
         for (cz.osu.brigadnik.entity.Registration registration : registrations) {
-            deleteRegistrationCascade(registration.getId());
+            registrationService.cascadeDeleteRegistration(registration.getId());
         }
         positionRepository.deleteById(id);
-    }
-
-    private void deleteRegistrationCascade(Long registrationId) {
-        List<cz.osu.brigadnik.entity.TimeRecord> timeRecords = timeRecordRepository.findByRegistrationId(registrationId);
-        for (cz.osu.brigadnik.entity.TimeRecord tr : timeRecords) {
-            breakRepository.deleteAll(breakRepository.findByTimeRecordId(tr.getId()));
-        }
-        timeRecordRepository.deleteAll(timeRecords);
-        registrationRepository.deleteById(registrationId);
     }
 
     private PositionDto entityToDto(Position position) {

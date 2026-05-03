@@ -8,12 +8,9 @@ import cz.osu.brigadnik.entity.User;
 import cz.osu.brigadnik.enums.RegistrationStatus;
 import cz.osu.brigadnik.enums.Role;
 import cz.osu.brigadnik.exception.BulkCapacityConflictException;
-import cz.osu.brigadnik.repository.BreakRepository;
-import cz.osu.brigadnik.repository.EventRepository;
-import cz.osu.brigadnik.repository.PositionRepository;
 import cz.osu.brigadnik.repository.RegistrationRepository;
-import cz.osu.brigadnik.repository.TimeRecordRepository;
-import cz.osu.brigadnik.repository.UserRepository;
+import org.springframework.security.access.AccessDeniedException;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -34,31 +31,27 @@ import static org.mockito.Mockito.when;
 class BulkActionsServiceTest {
 
     @Mock private RegistrationRepository registrationRepository;
-    @Mock private UserRepository userRepository;
-    @Mock private PositionRepository positionRepository;
-    @Mock private EventRepository eventRepository;
-    @Mock private TimeRecordRepository timeRecordRepository;
-    @Mock private BreakRepository breakRepository;
 
     @InjectMocks private RegistrationService registrationService;
+
+    private AutoCloseable mocks;
 
     private User adminA;
     private User adminB;
     private User worker1;
     private User worker2;
-    private Event eventA;
     private Position positionAFull;
     private Position positionAFree;
 
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
+        mocks = MockitoAnnotations.openMocks(this);
         adminA = User.builder().id(1L).role(Role.ADMIN).build();
         adminB = User.builder().id(2L).role(Role.ADMIN).build();
         worker1 = User.builder().id(10L).firstName("W").lastName("1").email("w1@x").role(Role.WORKER).build();
         worker2 = User.builder().id(11L).firstName("W").lastName("2").email("w2@x").role(Role.WORKER).build();
 
-        eventA = Event.builder().id(100L).name("EA").createdBy(adminA).build();
+        Event eventA = Event.builder().id(100L).name("EA").createdBy(adminA).build();
 
         positionAFull = Position.builder().id(200L).name("Full").capacity(1).hourlyRate(BigDecimal.TEN)
                 .date(LocalDate.now().plusDays(1)).startTime(LocalTime.of(8, 0)).endTime(LocalTime.of(16, 0))
@@ -68,13 +61,18 @@ class BulkActionsServiceTest {
                 .event(eventA).build();
     }
 
+    @AfterEach
+    void tearDown() throws Exception {
+        mocks.close();
+    }
+
     @Test
     void bulkApproveRejectsWhenAdminNotOwner() {
         Registration r = Registration.builder().id(500L).worker(worker1).position(positionAFree)
                 .status(RegistrationStatus.PENDING).build();
         when(registrationRepository.findAllById(List.of(500L))).thenReturn(List.of(r));
 
-        assertThrows(IllegalAccessError.class, () ->
+        assertThrows(AccessDeniedException.class, () ->
             registrationService.bulkApprove(List.of(500L), adminB.getId()));
     }
 
@@ -91,7 +89,7 @@ class BulkActionsServiceTest {
         BulkCapacityConflictException ex = assertThrows(BulkCapacityConflictException.class, () ->
             registrationService.bulkApprove(List.of(502L), adminA.getId()));
         assertEquals(1, ex.getConflicts().size());
-        assertEquals(502L, ex.getConflicts().get(0).getRegistrationId());
+        assertEquals(502L, ex.getConflicts().getFirst().getRegistrationId());
     }
 
     @Test
