@@ -1,0 +1,165 @@
+@startuml BrigadnikBackend
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+hide empty members
+
+title BrigadnikApp Backend - Class Diagram
+
+' =====================================================
+' DOMAIN MODEL (entity + enums)
+' =====================================================
+package "Domain model" {
+
+    enum Role {
+        WORKER
+        ADMIN
+    }
+
+    enum RegistrationStatus {
+        PENDING
+        APPROVED
+        REJECTED
+    }
+
+    enum LiveWorkerStatus {
+        NOT_ARRIVED
+        WORKING
+        ON_BREAK
+        FINISHED
+    }
+
+    class User {
+        - id : Long
+        - email : String
+        - password : String
+        - firstName : String
+        - lastName : String
+        - phone : String
+        - dateOfBirth : LocalDate
+        - role : Role
+    }
+
+    class Event {
+        - id : Long
+        - name : String
+        - description : String
+        - location : String
+        - startDate : LocalDate
+        - endDate : LocalDate
+    }
+
+    class Position {
+        - id : Long
+        - name : String
+        - capacity : int
+        - hourlyRate : BigDecimal
+        - date : LocalDate
+        - startTime : LocalTime
+        - endTime : LocalTime
+    }
+
+    class Registration {
+        - id : Long
+        - status : RegistrationStatus
+        - createdAt : LocalDateTime
+    }
+
+    class TimeRecord {
+        - id : Long
+        - clockIn : LocalDateTime
+        - clockOut : LocalDateTime
+        - computedHours : BigDecimal
+    }
+
+    class Break {
+        - id : Long
+        - startTime : LocalDateTime
+        - endTime : LocalDateTime
+    }
+}
+
+User "1" -- "*" Event : createdBy >
+Event "1" -- "*" Position
+Position "1" -- "*" Registration
+User "1" -- "*" Registration : worker >
+Registration "1" -- "*" TimeRecord
+User "1" -- "*" TimeRecord : worker >
+TimeRecord "1" -- "*" Break
+
+User --> Role
+Registration --> RegistrationStatus
+
+' =====================================================
+' APPLICATION LAYERS (Controller -> Service -> Repository)
+' =====================================================
+package "Controllers" {
+    class AuthController
+    class EventController
+    class PositionController
+    class RegistrationController
+    class TimeController
+    class DashboardController
+}
+
+package "Services" {
+    class AuthService
+    class EventService
+    class PositionService
+    class RegistrationService
+    class TimeService
+    class DashboardService
+}
+
+package "Repositories" {
+    interface UserRepository
+    interface EventRepository
+    interface PositionRepository
+    interface RegistrationRepository
+    interface TimeRecordRepository
+    interface BreakRepository
+}
+
+' Controller -> Service
+AuthController --> AuthService
+EventController --> EventService
+PositionController --> PositionService
+RegistrationController --> RegistrationService
+TimeController --> TimeService
+DashboardController --> DashboardService
+
+' Service -> Repository
+AuthService --> UserRepository
+EventService --> EventRepository
+PositionService --> PositionRepository
+RegistrationService --> RegistrationRepository
+TimeService --> TimeRecordRepository
+TimeService --> BreakRepository
+DashboardService --> RegistrationRepository
+DashboardService --> TimeRecordRepository
+
+' Repository -> Entity
+UserRepository ..> User
+EventRepository ..> Event
+PositionRepository ..> Position
+RegistrationRepository ..> Registration
+TimeRecordRepository ..> TimeRecord
+BreakRepository ..> Break
+
+' =====================================================
+' SECURITY
+' =====================================================
+package "Security" {
+    class JwtUtil
+    class JwtFilter
+    class CustomUserDetailsService
+    class SecurityConfig
+}
+
+JwtFilter --> JwtUtil
+JwtFilter --> CustomUserDetailsService
+CustomUserDetailsService --> UserRepository
+SecurityConfig --> JwtFilter
+AuthService --> JwtUtil
+
+@enduml
